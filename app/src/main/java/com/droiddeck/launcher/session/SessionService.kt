@@ -350,6 +350,11 @@ class SessionService : Service() {
 
         guest.add("BL_WIDTH=" + size.first)
         guest.add("BL_HEIGHT=" + size.second)
+        if (SessionState.mode == MODE_DESKTOP) {
+            val scale = SessionDisplay.kalynaScale(this, minOf(size.first, size.second))
+            guest.add("BL_KALYNA_SCALE=" + String.format(java.util.Locale.ROOT, "%.3f", scale))
+            Log.i(TAG, "kalyna: ${size.first}x${size.second}, ui scale $scale")
+        }
         if (SessionState.followScreen) guest.add("BL_FOLLOW_OUTPUT=1")
         if (SessionState.hdr) {
             guest.add("BL_HDR=1")

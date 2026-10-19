@@ -21,6 +21,9 @@ class Shell : public QObject {
     Q_PROPERTY(QString socketName READ socketName CONSTANT)
     Q_PROPERTY(bool touchLast READ touchLast NOTIFY touchLastChanged)
     Q_PROPERTY(QString screenshotPath READ screenshotPath CONSTANT)
+    // phone layout (home screen + app drawer) and a fixed UI scale, set by Kalyna on Android
+    Q_PROPERTY(bool phone READ phone CONSTANT)
+    Q_PROPERTY(qreal uiScale READ uiScale CONSTANT)
 
 public:
     explicit Shell(QObject *parent = nullptr);
@@ -33,6 +36,8 @@ public:
     QString forcedRotation() const;
     QString socketName() const;
     QString screenshotPath() const;
+    bool phone() const;
+    qreal uiScale() const;
     bool touchLast() const { return m_touchLast; }
 
     Q_INVOKABLE QUrl asset(const QString &rel) const;

@@ -166,6 +166,7 @@ Rectangle {
                           value: (System.brightness.percent || 0) / 100; onMoved: v => System.call("brightness.set", { percent: Math.round(5 + v * 95) }) }
             }
             Card {
+                visible: Shell.forcedRotation === ""
                 Text { text: qsTr("Screen rotation"); color: Theme.fg; font.pixelSize: Theme.px(15); font.weight: Font.Medium }
                 Segmented {
                     value: Prefs.rotation

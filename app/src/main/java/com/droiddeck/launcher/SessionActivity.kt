@@ -1526,13 +1526,16 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     private fun followChoice(): Boolean {
+        if (kalyna) return false
         val mode = SessionPrefs.prefMode(intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
         return SessionPrefs.resolutionChoice(this, mode, com.droiddeck.launcher.session.SessionDisplay.panelSize(this)) ==
             com.droiddeck.launcher.session.SessionDisplay.FOLLOW_SCREEN
     }
 
     private fun applyFollowOrientation(config: android.content.res.Configuration) {
-        val wanted = if (SessionState.followScreen && config.smallestScreenWidthDp >= 600) {
+        val wanted = if (kalyna) {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else if (SessionState.followScreen && config.smallestScreenWidthDp >= 600) {
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER
         } else {
             SessionPrefs.orientation(this)
@@ -1565,7 +1568,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
     }
 
+    /** KalynaDroid: the desktop is Kalyna, a phone launcher - always portrait. */
+    private val kalyna: Boolean
+        get() = intent.getStringExtra(SessionService.EXTRA_MODE) == SessionService.MODE_DESKTOP
+
     private fun outputSize(): Pair<Int, Int> {
+        if (kalyna) return com.droiddeck.launcher.session.SessionDisplay.kalynaSize(panelBounds())
         val mode = SessionPrefs.prefMode(intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
         val panel = com.droiddeck.launcher.session.SessionDisplay.panelSize(this)
         val program = intent.getStringExtra(SessionService.EXTRA_PROGRAM)

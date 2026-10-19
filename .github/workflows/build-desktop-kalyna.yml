@@ -48,6 +48,9 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq zstd xz-utils gpgv >/dev/null
           bash tools/desktop-kalyna/build.sh pkg out/shell
           cp out/desktop-kalyna.shell.txt pkg/ 2>/dev/null || true
+          install -m755 out/shell/usr/bin/kalyna-shell pkg/kalyna-shell
+          for f in out/shots/*.png; do [ -f "$f" ] && cp "$f" "pkg/shot-$(basename "$f")"; done
+          ls pkg
           echo "::notice::desktop-kalyna sha256 $(cat pkg/desktop-kalyna.sha256) size $(cat pkg/desktop-kalyna.size)"
       - name: Publish as a release
         env:
@@ -57,5 +60,5 @@ jobs:
           gh release create "$tag" -R "${{ github.repository }}" --title "Kalyna desktop package r${{ github.run_number }}" \
             --notes "kalyna-shell $(cat kalyna/native/VERSION) · sha256 $(cat pkg/desktop-kalyna.sha256) · size $(cat pkg/desktop-kalyna.size)" \
             --latest=false \
-            pkg/desktop-kalyna.tar.zst pkg/desktop-kalyna.sha256 pkg/desktop-kalyna.packages.txt
+            pkg/desktop-kalyna.tar.zst pkg/desktop-kalyna.sha256 pkg/desktop-kalyna.packages.txt pkg/kalyna-shell $(ls pkg/shot-*.png 2>/dev/null)
           echo "::notice::published $tag"

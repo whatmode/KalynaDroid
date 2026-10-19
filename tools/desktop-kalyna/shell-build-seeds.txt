@@ -9,3 +9,4 @@ qt6-wayland
 qt6-shadertools
 qt6-svg
 qt6-virtualkeyboard
+python

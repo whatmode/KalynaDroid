@@ -495,6 +495,36 @@ jobs:
           rustup target add --toolchain 1.90.0 aarch64-unknown-linux-gnu
           RUSTUP_TOOLCHAIN=1.90.0 bash tools/comet/build.sh
 
+      - name: Kalyna shell files (shipped in the APK, so shell updates need no new package)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          D=app/src/main/assets/linuxfs
+          rm -rf "$D/usr/lib/kalyna" "$D/usr/bin/kalyna-shell" "$D/usr/local/bin/kalyna-desktop"
+          install -Dm644 tools/desktop-kalyna/overlay/usr/local/bin/kalyna-desktop "$D/usr/local/bin/kalyna-desktop"
+          install -Dm644 kalyna/native/system/kalyna-system.py "$D/usr/lib/kalyna/kalyna-system.py"
+          . tools/desktop-kalyna/release.env
+          repo="${KALYNA_REPO:-$GITHUB_REPOSITORY}"
+          # The newest kalyna-shell built against the same Qt as the pinned package (the shell uses
+          # Qt's private Wayland compositor API, so the Qt versions must match exactly).
+          qt() { grep -E '^(qt6-base|qt6-declarative|qt6-wayland|qt6-virtualkeyboard|qt6-svg)-[0-9]' "$1" | sed -E 's/^(qt6-[a-z]+-[0-9.]+)-.*/\1/' | sort; }
+          gh release download "$KALYNA_TAG" -R "$repo" -p desktop-kalyna.packages.txt -O /tmp/pinned-packages.txt
+          qt /tmp/pinned-packages.txt > /tmp/pinned-qt.txt
+          echo "pinned package $KALYNA_TAG: $(tr '\n' ' ' < /tmp/pinned-qt.txt)"
+          found=""
+          for tag in $(gh api "repos/$repo/releases?per_page=50" --jq '.[] | select(.tag_name|startswith("desktop-kalyna-r")) | select([.assets[].name]|index("kalyna-shell")) | .tag_name'); do
+            gh release download "$tag" -R "$repo" -p desktop-kalyna.packages.txt -O /tmp/cand.txt --clobber || continue
+            if [ "$(qt /tmp/cand.txt)" = "$(cat /tmp/pinned-qt.txt)" ]; then found=$tag; break; fi
+            echo "$tag: different Qt, skipped"
+          done
+          if [ -n "$found" ]; then
+            gh release download "$found" -R "$repo" -p kalyna-shell -O "$D/usr/bin/kalyna-shell"
+            echo "::notice::kalyna-shell from $found ships in the APK"
+          else
+            echo "::warning::no kalyna-shell matches the pinned package's Qt; the package's own shell is used"
+          fi
+
       - name: Build
         id: build
         env:

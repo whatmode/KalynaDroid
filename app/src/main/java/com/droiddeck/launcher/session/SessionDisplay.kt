@@ -45,6 +45,24 @@ object SessionDisplay {
         minOf(width * 9 / 16, (height * UNFOLDED_MAX_GAME_SHARE).toInt()) and 1.inv()
 
 
+    /** KalynaDroid: Kalyna draws on the CPU, so a portrait output 720 pixels wide in the panel's shape. */
+    const val KALYNA_WIDTH = 720
+
+    fun kalynaSize(panel: android.graphics.Rect): Pair<Int, Int> {
+        val short = minOf(panel.width(), panel.height()).coerceAtLeast(1)
+        val long = maxOf(panel.width(), panel.height()).coerceAtLeast(1)
+        val w = minOf(KALYNA_WIDTH, short)
+        val h = (Math.round(w.toDouble() * long / short).toInt() + 1) and 1.inv()
+        return w to h
+    }
+
+    /** Kalyna's UI scale: output pixels per Android dp, so Kalyna is sized like the phone's own UI. */
+    fun kalynaScale(context: Context, outputWidth: Int): Double {
+        val dm = context.resources.displayMetrics
+        val shortDp = minOf(dm.widthPixels, dm.heightPixels) / dm.density.coerceAtLeast(0.5f)
+        return (outputWidth / shortDp.coerceAtLeast(200f)).toDouble().coerceIn(0.8, 4.0)
+    }
+
     fun panelSize(context: Context): Pair<Int, Int> {
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         @Suppress("DEPRECATION")

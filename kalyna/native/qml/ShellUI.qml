@@ -18,6 +18,11 @@ Item {
     readonly property int angle: ({ "cw": 90, "ccw": 270, "180": 180 })[rotationName] || 0
     readonly property bool sideways: angle === 90 || angle === 270
 
+    // one design unit in pixels: fixed on a phone (pixels per Android dp), else grows with the screen
+    function unit() {
+        return Shell.uiScale > 0 ? Shell.uiScale : Math.max(0.9, Math.min(screenItem.width, screenItem.height) / 760)
+    }
+
     // ---------------------------------------------------------------- state
     property var windows: []          // open app windows (see AppWindow below)
     property var current: null        // window shown on top, or null for home
@@ -30,6 +35,7 @@ Item {
     property var launchingApp: null
 
     function showHome() {
+        if (homeShown && !internalApp && home.drawerOpen) { home.drawerOpen = false; return }
         current = null; internalApp = null; recentsShown = false; qsShown = false; launching = ""
         screenItem.forceActiveFocus(); Qt.inputMethod.hide()
     }
@@ -181,8 +187,8 @@ Item {
         anchors.centerIn: parent
         rotation: shell.angle
         readonly property bool portrait: height > width
-        onWidthChanged: { Theme.s = Math.max(0.9, Math.min(width, height) / 760); shell.configureAll() }
-        onHeightChanged: { Theme.s = Math.max(0.9, Math.min(width, height) / 760); shell.configureAll() }
+        onWidthChanged: { Theme.s = shell.unit(); shell.configureAll() }
+        onHeightChanged: { Theme.s = shell.unit(); shell.configureAll() }
 
         // wallpaper + home live in the backdrop that liquid glass refracts
         Item {
@@ -193,6 +199,7 @@ Item {
             // Keep it below HomeScreen so the clock, app labels, and touch targets remain crisp.
             Glass {
                 z: 1
+                visible: !home.drawerMode || home.drawerPos > 0
                 x: home.x + home.sheetRect.x; y: home.y + home.sheetRect.y
                 width: home.sheetRect.width; height: home.sheetRect.height
                 radius: Theme.px(24)
@@ -360,6 +367,8 @@ Item {
     Shortcut { sequence: "Monitor Brightness Down"; context: Qt.ApplicationShortcut; autoRepeat: true; onActivated: shell.nudgeBrightness(-8) }
     Shortcut { sequences: ["Meta+Tab", "Alt+Tab"]; onActivated: shell.recentsShown = !shell.recentsShown }
     Shortcut { sequence: "Ctrl+Alt+Home"; onActivated: shell.showHome() }
+    // phone: Back (or Escape) closes the app drawer
+    Shortcut { sequences: ["Back", "Escape"]; enabled: shell.homeShown && !shell.internalApp && home.drawerOpen; onActivated: home.drawerOpen = false }
     Shortcut { sequence: "Ctrl+Alt+Backspace"; enabled: Shell.nested; onActivated: Shell.quit() }
     Keys.onReleased: e => { if (e.key === Qt.Key_Meta || e.key === Qt.Key_Super_L) shell.showHome() }
 }

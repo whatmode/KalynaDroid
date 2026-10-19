@@ -13,6 +13,7 @@ Item {
     // ---------------------------------------------------------------- search bar
     Glass {
         id: bar
+        visible: !ov.home.drawerMode || ov.home.drawerPos > 0
         backdrop: ov.backdrop
         x: ov.home.sheetRect.x + Theme.px(4)
         y: ov.home.sheetRect.y + ov.home.sheetRect.height - ov.home.barH - Theme.px(2)
@@ -110,7 +111,8 @@ Item {
         originX: x
         originY: y + Theme.topH
         radius: Theme.px(26)
-        visible: ov.portrait || ov.home.sheetRect.x > width || Prefs.leftHanded
+        opacity: ov.home.drawerMode ? 1 - ov.home.drawerPos : 1
+        visible: opacity > 0 && (ov.portrait || ov.home.sheetRect.x > width || Prefs.leftHanded)
 
         Row {
             id: dockRow
@@ -134,6 +136,17 @@ Item {
                 }
             }
             Rectangle { width: 1; height: dock.cell * 0.6; anchors.verticalCenter: parent.verticalCenter; color: Qt.rgba(1, 1, 1, 0.25); visible: ov.shellRef.windows.length > 0 }
+            Item {   // phone: all apps (opens the drawer)
+                width: dock.cell; height: dock.cell
+                visible: ov.home.drawerMode
+                Rectangle {
+                    anchors.centerIn: parent; width: Theme.px(54); height: width; radius: width * 0.26
+                    color: Qt.rgba(1, 1, 1, 0.16); border.color: Qt.rgba(1, 1, 1, 0.2)
+                    scale: ama.pressed ? 0.9 : 1
+                    Glyph { anchors.centerIn: parent; name: "grid"; size: Theme.px(26) }
+                }
+                MouseArea { id: ama; anchors.fill: parent; onClicked: ov.home.drawerOpen = true }
+            }
             Item {   // recent apps
                 width: dock.cell; height: dock.cell
                 visible: ov.shellRef.windows.length > 0

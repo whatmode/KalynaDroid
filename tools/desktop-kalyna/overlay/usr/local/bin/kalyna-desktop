@@ -11,6 +11,10 @@ export MOZ_DISABLE_SOCKET_PROCESS_SANDBOX=1 MOZ_DISABLE_UTILITY_SANDBOX=1 MOZ_SH
 export SHELL=/bin/bash
 export KALYNA_WAYLAND_SOCKET=wayland-1
 export WAYLAND_DISPLAY=wayland-0
+# On a phone: portrait only (the app keeps the screen upright), sized for the phone's density, and
+# the phone layout (home screen + app drawer).
+export KALYNA_PHONE=1 KALYNA_ROTATE=none
+[ -n "${BL_KALYNA_SCALE:-}" ] && export KALYNA_SCALE="$BL_KALYNA_SCALE"
 # Rendering: the shell needs OpenGL for its glass shader. "zink" draws through the phone's Vulkan
 # driver (Turnip on Adreno, PanVK on Mali); otherwise Mesa's llvmpipe draws on the CPU.
 case "${KALYNA_GPU:-${BL_KALYNA_GPU:-software}}" in
@@ -21,7 +25,7 @@ if [ -n "${BL_DEBUG_DIR:-}" ]; then
   mkdir -p "$BL_DEBUG_DIR" 2>/dev/null || true
   exec >>"$BL_DEBUG_DIR/kalyna.log" 2>&1
 fi
-echo "== kalyna-desktop $(date -u '+%Y-%m-%d %H:%M:%S UTC') ${BL_WIDTH:-1280}x${BL_HEIGHT:-720} gpu=${GALLIUM_DRIVER:-?}"
+echo "== kalyna-desktop $(date -u '+%Y-%m-%d %H:%M:%S UTC') ${BL_WIDTH:-1280}x${BL_HEIGHT:-720} gpu=${GALLIUM_DRIVER:-?} scale=${KALYNA_SCALE:-auto}"
 find "$XDG_RUNTIME_DIR" -mindepth 1 -maxdepth 1 ! -name 'wayland-0*' ! -name 'keymap.xkb' -exec rm -rf {} + 2>/dev/null
 chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null
 mkdir -p "$HOME/.config/kalyna" "$HOME/Desktop" "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" 2>/dev/null

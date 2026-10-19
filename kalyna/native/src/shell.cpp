@@ -42,6 +42,13 @@ QString Shell::assets() const { return qEnvironmentVariable("KALYNA_ASSETS"); }
 QString Shell::socketName() const { return qEnvironmentVariable("KALYNA_WAYLAND_SOCKET", "wayland-kalyna"); }
 QString Shell::screenshotPath() const { return qEnvironmentVariable("KALYNA_SCREENSHOT"); }
 QString Shell::forcedRotation() const { return qEnvironmentVariable("KALYNA_ROTATE"); }
+bool Shell::phone() const { return qEnvironmentVariableIntValue("KALYNA_PHONE") == 1; }
+qreal Shell::uiScale() const
+{
+    bool ok = false;
+    const qreal s = qEnvironmentVariable("KALYNA_SCALE").toDouble(&ok);
+    return ok && s >= 0.5 && s <= 5 ? s : 0;   // 0: size from the screen
+}
 
 QString Shell::product() const
 {

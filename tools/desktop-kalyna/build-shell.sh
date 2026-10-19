@@ -35,7 +35,7 @@ while read -r entry sum; do
     sudo tar -xf "$work/pkgs/${entry#*/}" -C "$work/root" --no-same-owner \
         --exclude=.PKGINFO --exclude=.MTREE --exclude=.INSTALL --exclude=.BUILDINFO --exclude=.CHANGELOG
 done < "$work/packages.txt"
-sudo mkdir -p "$work/root/build" "$work/root/proc" "$work/root/dev" "$work/root/tmp"
+sudo mkdir -p "$work/root/build/shots" "$work/root/tmp/home" "$work/root/proc" "$work/root/dev" "$work/root/tmp"
 sudo chmod 1777 "$work/root/tmp"
 sudo mknod -m 666 "$work/root/dev/null" c 1 3
 sudo mknod -m 666 "$work/root/dev/zero" c 1 5
@@ -50,6 +50,17 @@ run /usr/bin/env DESTDIR=/build/dest /usr/bin/cmake --install /build/out
 sudo cp -a "$work/root/build/dest/." "$out/"
 sudo chown -R "$(id -u):$(id -g)" "$out"
 strip --strip-unneeded "$out/usr/bin/kalyna-shell"
+# Screenshots of the phone layout (Kalyna on Android), drawn in software without a screen. They are
+# published with the package so the layout can be checked before anyone installs it.
+shots=$(realpath -m "$out/../shots")
+mkdir -p "$shots"
+run /usr/bin/env XDG_RUNTIME_DIR=/tmp QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+    KALYNA_PHONE=1 KALYNA_SCALE=1.6 KALYNA_ROTATE=none KALYNA_DEMO=1 HOME=/tmp/home \
+    timeout 90 /build/dest/usr/bin/kalyna-shell --nested --demo --size 720x1602 \
+    --test /build/src/tests/PhoneDriver.qml --test-out /build/shots 2>&1 | grep -E "phone test|qml|QML|rror" | head -40 || true
+sudo cp -a "$work/root/build/shots/." "$shots/" 2>/dev/null || true
+sudo chown -R "$(id -u):$(id -g)" "$shots" 2>/dev/null || true
+ls -l "$shots" || true
 {
     echo "kalyna-shell $(cat "$repo/kalyna/native/VERSION") from $(git -C "$repo" rev-parse HEAD 2>/dev/null || echo unknown)"
     echo "Executable sha256 $(sha256sum "$out/usr/bin/kalyna-shell" | cut -d' ' -f1)"

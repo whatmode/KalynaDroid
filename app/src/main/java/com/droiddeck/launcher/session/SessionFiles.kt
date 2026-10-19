@@ -143,7 +143,15 @@ object SessionFiles {
             runCatching { context.assets.list("linuxfs/$dir")?.contains(asset.substringAfterLast('/')) == true }.getOrDefault(false)
         }
         DesktopCatalog.desktopMissing(root)?.let { Log.w(TAG, "Kalyna desktop files not staged: $it") }
-        val all = (if (DesktopCatalog.desktopInstalled(root)) files + DESKTOP_FILES else files) + optional
+        // KalynaDroid: the shell, its session script and system service come with the APK (when
+        // the APK carries them), so a shell update needs no new 430 MB package.
+        val kalyna = if (!DesktopCatalog.desktopInstalled(root)) emptyList() else listOf(
+            "usr/bin/kalyna-shell", "usr/local/bin/kalyna-desktop", "usr/lib/kalyna/kalyna-system.py",
+        ).filter { asset ->
+            runCatching { context.assets.list("linuxfs/" + asset.substringBeforeLast('/'))?.contains(asset.substringAfterLast('/')) == true }
+                .getOrDefault(false)
+        }.map { it to it }
+        val all = (if (DesktopCatalog.desktopInstalled(root)) files + DESKTOP_FILES else files) + optional + kalyna
         for ((asset, relative) in all) {
             val target = File(root, relative)
             val staged = File(target.parentFile, target.name + ".staged")

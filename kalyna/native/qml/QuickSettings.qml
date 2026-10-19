@@ -73,6 +73,7 @@ Item {
                 }
                 QsTile {
                     width: parent.cw
+                    visible: Shell.forcedRotation === ""   // a phone keeps Kalyna upright itself
                     glyph: "rotate"; label: qsTr("Rotation")
                     sub: ({ "auto": qsTr("Automatic"), "none": qsTr("Normal"), "cw": qsTr("Turned right"), "ccw": qsTr("Turned left"), "180": qsTr("Upside down") })[Prefs.rotation]
                     onToggled: {

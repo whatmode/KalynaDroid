@@ -10,16 +10,40 @@ Item {
     readonly property bool portrait: height > width
     readonly property bool lefty: Prefs.leftHanded
 
+    // ---------------------------------------------------------------- phone: home screen + app drawer
+    // On a phone (Kalyna on Android) home shows the clock and the dock; all apps live in a drawer
+    // that slides up (swipe up on home, or the apps button in the dock) and slides away again.
+    readonly property bool drawerMode: Shell.phone && portrait
+    property bool drawerOpen: false
+    property real drawerPos: drawerMode ? (drawerOpen ? 1 : 0) : 1
+    Behavior on drawerPos { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+    onDrawerModeChanged: drawerOpen = false
+    onVisibleChanged: if (!visible) drawerOpen = false
+    onDrawerOpenChanged: if (drawerOpen) Qt.callLater(scrollToStart)
+
     // geometry shared with the overlay
-    readonly property rect sheetRect: portrait
+    readonly property rect sheetRect: drawerMode
+        ? Qt.rect(Theme.px(8), Theme.px(8) + (height - Theme.px(8)) * (1 - drawerPos), width - Theme.px(16), height - Theme.px(16))
+        : portrait
         ? Qt.rect(Theme.px(12), clock.y + clock.height + Theme.px(14), width - Theme.px(24),
                   height - (clock.y + clock.height + Theme.px(14)) - Theme.px(96))
         : Qt.rect(lefty ? Theme.px(14) : width * 0.42, Theme.px(14), width * 0.58 - Theme.px(28), height - Theme.px(28))
     readonly property int barH: Theme.px(50)
 
     // ---------------------------------------------------------------- clock
+    // swipe up anywhere on the home screen opens the drawer
+    MouseArea {
+        anchors.fill: parent
+        enabled: home.drawerMode && !home.drawerOpen
+        property real startY: 0
+        onPressed: m => startY = m.y
+        onPositionChanged: m => { if (startY - m.y > Theme.px(40)) home.drawerOpen = true }
+    }
+
     Column {
         id: clock
+        opacity: home.drawerMode ? 1 - home.drawerPos : 1
+        visible: opacity > 0
         x: home.portrait ? (home.width - width) / 2 : (home.lefty ? home.width * 0.62 + Theme.px(30) : Theme.px(36))
         y: home.portrait ? Theme.px(26) : Theme.px(40)
         spacing: Theme.px(2)
@@ -91,10 +115,32 @@ Item {
         id: sheet
         x: home.sheetRect.x; y: home.sheetRect.y; width: home.sheetRect.width; height: home.sheetRect.height
         clip: true
+        visible: !home.drawerMode || home.drawerPos > 0
+
+        // the drawer's handle: tap or pull down to close it
+        Item {
+            id: handle
+            visible: home.drawerMode
+            z: 2
+            width: parent.width; height: Theme.px(34)
+            Rectangle {
+                anchors.centerIn: parent
+                width: Theme.px(44); height: Theme.px(5); radius: height / 2
+                color: Theme.homeFg; opacity: 0.6
+            }
+            MouseArea {
+                anchors.fill: parent
+                property real startY: 0
+                onPressed: m => startY = m.y
+                onPositionChanged: m => { if (m.y - startY > Theme.px(30)) home.drawerOpen = false }
+                onClicked: home.drawerOpen = false
+            }
+        }
 
         Flickable {
             id: flick
             anchors.fill: parent
+            anchors.topMargin: home.drawerMode ? handle.height : 0
             anchors.bottomMargin: home.barH + Theme.px(10)
             contentWidth: width
             contentHeight: Math.max(height + 1, col.height)
@@ -107,12 +153,14 @@ Item {
             onVerticalVelocityChanged: speed = Math.max(speed * 0.8, Math.abs(verticalVelocity))
             onMovementStarted: speed = 0
             onAtYBeginningChanged: if (atYBeginning && moving) home.edge("top")
+            // pulling down past the top of the drawer closes it
+            onVerticalOvershootChanged: if (home.drawerMode && verticalOvershoot < -Theme.px(70)) home.drawerOpen = false
             onAtYEndChanged: if (atYEnd && moving) home.edge("bottom")
 
             Column {
                 id: col
                 width: flick.width
-                y: Math.max(0, flick.height - height)       // short lists hug the search bar
+                y: home.drawerMode ? 0 : Math.max(0, flick.height - height)       // short lists hug the search bar
                 spacing: Theme.px(4)
                 Repeater {
                     model: home.sections
@@ -163,7 +211,8 @@ Item {
         const k = Math.max(0.35, Math.min(1, 1.15 - flick.speed / 5000))
         System.call("sound.play", { name: which === "top" ? "edge-top" : "edge-bottom", volume: Prefs.scrollVolume / 100 * k })
     }
-    function scrollToEnd() { flick.contentY = Math.max(0, flick.contentHeight - flick.height) }
+    function scrollToEnd() { if (drawerMode) scrollToStart(); else flick.contentY = Math.max(0, flick.contentHeight - flick.height) }
+    function scrollToStart() { flick.contentY = 0 }
     onQueryChanged: Qt.callLater(scrollToEnd)
     Component.onCompleted: Qt.callLater(scrollToEnd)
     property alias flick: flick
