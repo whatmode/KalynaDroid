@@ -13,7 +13,7 @@ class DesktopCatalogTest {
 
     @Test fun desktopNeedsTheCompleteCurrentPinnedPackage() {
         val root = temporary.root
-        val kwin = File(root, "usr/bin/kwin_wayland").apply {
+        val shell = File(root, "usr/bin/kalyna-shell").apply {
             parentFile.mkdirs()
             writeText("fixture")
         }
@@ -21,13 +21,13 @@ class DesktopCatalogTest {
         assertFalse(DesktopCatalog.desktopInstalled(root))
         marker.writeText("older-package")
         assertFalse(DesktopCatalog.desktopInstalled(root))
-        marker.writeText("${BuildConfig.DESKTOP_KDE_TAG}\n")
+        marker.writeText("${BuildConfig.KALYNA_TAG}\n")
         assertTrue(DesktopCatalog.desktopInstalled(root))
-        val pending = File(root, DesktopRemoval.PENDING).apply { writeText(BuildConfig.DESKTOP_KDE_TAG) }
+        val pending = File(root, DesktopRemoval.PENDING).apply { writeText(BuildConfig.KALYNA_TAG) }
         assertFalse(DesktopCatalog.desktopInstalled(root))
         pending.delete()
         assertTrue(DesktopCatalog.desktopInstalled(root))
-        kwin.delete()
+        shell.delete()
         assertFalse(DesktopCatalog.desktopInstalled(root))
     }
 }
