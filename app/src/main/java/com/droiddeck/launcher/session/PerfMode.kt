@@ -21,7 +21,11 @@ object PerfMode {
                 val cur = display.mode
                 val cap = minOf(peakRefreshCap(a), refreshLimit.takeIf { it > 0 }?.toFloat() ?: Float.POSITIVE_INFINITY)
                 val best = selectMode(display.supportedModes, cur, fpsLimit, cap)
-                if (best != null && a.window.attributes.preferredDisplayModeId != best.modeId) {
+                // Pixels list two modes with the same size and rate (mode 1 and 255): switching between
+                // equals makes the display change, which reapplies this, which switches back, forever.
+                val preferred = display.supportedModes.firstOrNull { it.modeId == a.window.attributes.preferredDisplayModeId }
+                val same = best != null && preferred != null && sameMode(preferred, best)
+                if (best != null && !same && a.window.attributes.preferredDisplayModeId != best.modeId) {
                     a.window.attributes = a.window.attributes.apply { preferredDisplayModeId = best.modeId }
                     "display ${cur.refreshRate.toInt()} → ${best.refreshRate.toInt()} Hz (mode ${best.modeId})"
                 } else "display ${cur.refreshRate.toInt()} Hz"
@@ -63,6 +67,10 @@ object PerfMode {
             ?: allowed.maxByOrNull { it.refreshRate }
             ?: sameSize.minByOrNull { it.refreshRate }
     }
+
+    internal fun sameMode(a: Display.Mode, b: Display.Mode): Boolean =
+        a.physicalWidth == b.physicalWidth && a.physicalHeight == b.physicalHeight &&
+            Math.abs(a.refreshRate - b.refreshRate) < 0.5f
 
     fun cadenceFits(hz: Float, fpsLimit: Int): Boolean {
         if (fpsLimit <= 0) return true
