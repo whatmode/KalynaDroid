@@ -70,6 +70,16 @@ object DesktopCatalog {
         File(root, "usr/bin/kalyna-shell").isFile &&
             FileUtils.readString(File(root, ".droiddeck-pkg-$DESKTOP_ID"))?.trim() == BuildConfig.KALYNA_TAG
 
+    /** Why the Kalyna package doesn't count as installed (null when it does), for the logs. */
+    fun desktopMissing(root: File): String? = when {
+        !root.isDirectory -> "no runtime at ${root.path}"
+        File(root, DesktopRemoval.PENDING).exists() -> "a desktop removal is pending"
+        !File(root, "usr/bin/kalyna-shell").isFile -> "usr/bin/kalyna-shell is missing"
+        else -> FileUtils.readString(File(root, ".droiddeck-pkg-$DESKTOP_ID"))?.trim().let {
+            if (it == BuildConfig.KALYNA_TAG) null else "package marker is ${it ?: "missing"}, want ${BuildConfig.KALYNA_TAG}"
+        }
+    }
+
     fun desktopPresent(context: Context): Boolean {
         val root = LinuxRuntime.rootDir(context)
         return File(root, DesktopRemoval.PENDING).exists() || marker(context, DESKTOP_ID).exists()

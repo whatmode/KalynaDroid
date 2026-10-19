@@ -1278,6 +1278,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     @Volatile private var installingRuntime = false
 
+    private var desktopInstallTried = false
+
     private fun installThenStart(runtime: Boolean, desktop: Boolean, proton: Boolean = false) {
         if (SessionState.stopRequested) return
         installingRuntime = true
@@ -1396,6 +1398,19 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     override fun surfaceCreated(holder: SurfaceHolder) {
         if (holder !== outputHolder()) return
         if (installingRuntime || SessionState.stopRequested || ended) return
+        if (!SessionState.running && !desktopInstallTried &&
+            intent.getStringExtra(SessionService.EXTRA_MODE) == SessionService.MODE_DESKTOP) {
+            // KalynaDroid: never start the desktop without the Kalyna package; install it first.
+            val missing = com.droiddeck.launcher.runtime.DesktopCatalog.desktopMissing(
+                com.droiddeck.launcher.runtime.LinuxRuntime.rootDir(this))
+            if (missing != null) {
+                desktopInstallTried = true
+                Log.w(TAG, "Kalyna package not ready ($missing): installing it before the session")
+                val needRuntime = com.droiddeck.launcher.runtime.LinuxRuntimeInstaller.installedVersion(this) == null
+                installThenStart(needRuntime, true)
+                return
+            }
+        }
         if (!SessionState.running) {
             SessionEvents.transition(SessionPhase.STARTING_COMPOSITOR, "compositor.starting")
         }

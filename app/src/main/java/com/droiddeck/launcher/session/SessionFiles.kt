@@ -142,6 +142,7 @@ object SessionFiles {
             val dir = asset.substringBeforeLast('/')
             runCatching { context.assets.list("linuxfs/$dir")?.contains(asset.substringAfterLast('/')) == true }.getOrDefault(false)
         }
+        DesktopCatalog.desktopMissing(root)?.let { Log.w(TAG, "Kalyna desktop files not staged: $it") }
         val all = (if (DesktopCatalog.desktopInstalled(root)) files + DESKTOP_FILES else files) + optional
         for ((asset, relative) in all) {
             val target = File(root, relative)
