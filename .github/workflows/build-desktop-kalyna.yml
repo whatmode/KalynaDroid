@@ -6,6 +6,7 @@ on:
     paths:
       - 'kalyna/**'
       - 'tools/desktop-kalyna/**'
+      - '!tools/desktop-kalyna/release.env'
       - '.github/workflows/build-desktop-kalyna.yml'
   workflow_dispatch:
 
