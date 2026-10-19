@@ -660,8 +660,14 @@ jobs:
           APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
           name=KalynaOS-r${{ github.run_number }}.apk
           cp "$APK" "$name"
-          gh release create "kalynadroid-r${{ github.run_number }}" -R "${{ github.repository }}" \
-            --title "Kalyna OS for Android r${{ github.run_number }}" --notes "Built from ${{ github.sha }}" "$name"
+          tag=kalynadroid-r${{ github.run_number }}
+          if gh release view "$tag" -R "${{ github.repository }}" >/dev/null 2>&1; then
+            # a re-run of the same build: replace its APK
+            gh release upload "$tag" -R "${{ github.repository }}" --clobber "$name"
+          else
+            gh release create "$tag" -R "${{ github.repository }}" \
+              --title "Kalyna OS for Android r${{ github.run_number }}" --notes "Built from ${{ github.sha }}" "$name"
+          fi
           echo "::notice::published kalynadroid-r${{ github.run_number }}"
 
       - name: Report on the pull request
