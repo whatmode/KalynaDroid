@@ -436,6 +436,201 @@ def play(name, volume=0.6):
     return {"ok": True}
 
 
+
+# ---------------------------------------------------------------- Android host (KalynaDroid)
+# On a phone, Kalyna runs inside an Android app's Linux layer: there is no NetworkManager, backlight
+# or Waydroid. The app writes what Android knows to $BL_LAUNCH_DIR/kalyna-host.json (battery, Wi-Fi,
+# volume, brightness, the phone's apps) and acts on kalyna-request-*.json files written here.
+HOST_DIR = os.environ.get("BL_LAUNCH_DIR", "")
+HOST_FILE = os.path.join(HOST_DIR, "kalyna-host.json") if HOST_DIR else ""
+
+
+def host():
+    if not HOST_FILE or not os.path.isfile(HOST_FILE):
+        return None
+    try:
+        with open(HOST_FILE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def host_request(op, **args):
+    if not HOST_DIR:
+        return False
+    args["op"] = op
+    name = f"kalyna-request-{time.time_ns()}-{os.getpid()}.json"
+    tmp = os.path.join(HOST_DIR, "." + name)
+    try:
+        with open(tmp, "w") as f:
+            json.dump(args, f)
+        os.rename(tmp, os.path.join(HOST_DIR, name))
+        return True
+    except OSError:
+        return False
+
+
+_linux_battery, _linux_volume, _linux_set_volume = battery, volume, set_volume
+_linux_brightness, _linux_set_brightness = brightness, set_brightness
+_linux_wifi_state, _linux_wifi_connect, _linux_wifi_forget, _linux_wifi_enable = wifi_state, wifi_connect, wifi_forget, wifi_enable
+_linux_bt_state, _linux_bt_enable, _linux_power = bt_state, bt_enable, power
+_linux_apps, _linux_launch, _linux_run_command = linux_apps, launch, run_command
+_linux_android_state, _linux_android_start, _linux_android_stop = android_state, android_start, android_stop
+_pending = {}   # values just asked for, shown until Android reports them back
+
+
+def battery():
+    h = host()
+    b = h and h.get("battery")
+    if not b:
+        return _linux_battery()
+    return {"present": True, "percent": int(b.get("percent", 0)), "charging": bool(b.get("charging")),
+            "full": int(b.get("percent", 0)) >= 100 and bool(b.get("plugged")), "plugged": bool(b.get("plugged"))}
+
+
+def volume():
+    h = host()
+    v = h and h.get("volume")
+    if not v:
+        return _linux_volume()
+    p = _pending.get("volume")
+    if p and time.time() - p[1] < 3:
+        return {"available": True, "percent": p[0], "muted": False}
+    return {"available": True, "percent": int(v.get("percent", 0)), "muted": bool(v.get("muted"))}
+
+
+def set_volume(percent=None, muted=None):
+    if not host():
+        return _linux_set_volume(percent, muted)
+    if percent is not None:
+        percent = max(0, min(100, int(percent)))
+        _pending["volume"] = (percent, time.time())
+        host_request("volume", percent=percent)
+    if muted is not None:
+        host_request("mute", on=bool(muted))
+    return volume()
+
+
+def brightness():
+    h = host()
+    b = h and h.get("brightness")
+    if not b:
+        return _linux_brightness()
+    p = _pending.get("brightness")
+    if p and time.time() - p[1] < 3:
+        return {"available": True, "percent": p[0]}
+    return {"available": True, "percent": int(b.get("percent", 50))}
+
+
+def set_brightness(percent):
+    if not host():
+        return _linux_set_brightness(percent)
+    p = max(3, min(100, int(percent)))
+    _pending["brightness"] = (p, time.time())
+    host_request("brightness", percent=p)
+    return brightness()
+
+
+ANDROID_WIFI = "Wi-Fi is managed by Android. Tap a network to open Android's Wi-Fi panel."
+
+
+def wifi_state(scan=False):
+    h = host()
+    w = h and h.get("wifi")
+    if not w:
+        return _linux_wifi_state(scan)
+    nets = []
+    if w.get("ssid"):
+        nets.append({"ssid": w["ssid"], "signal": int(w.get("signal", 0)), "secure": True, "known": True})
+    return {"available": True, "enabled": bool(w.get("enabled")), "iface": "android", "ssid": w.get("ssid", ""),
+            "ip": w.get("ip", ""), "networks": nets, "note": ANDROID_WIFI}
+
+
+def wifi_connect(ssid, password=""):
+    if not host():
+        return _linux_wifi_connect(ssid, password)
+    host_request("settings", page="wifi")
+    return {"ok": False, "error": ANDROID_WIFI}
+
+
+def wifi_forget(ssid):
+    if not host():
+        return _linux_wifi_forget(ssid)
+    host_request("settings", page="wifi")
+    return {"ok": True}
+
+
+def wifi_enable(on):
+    if not host():
+        return _linux_wifi_enable(on)
+    host_request("settings", page="wifi")
+    return wifi_state()
+
+
+def bt_state():
+    h = host()
+    b = h and h.get("bluetooth")
+    if not b:
+        return _linux_bt_state()
+    return {"available": True, "enabled": bool(b.get("enabled")), "devices": []}
+
+
+def bt_enable(on):
+    if not host():
+        return _linux_bt_enable(on)
+    host_request("settings", page="bluetooth")
+    return bt_state()
+
+
+def power(action):
+    if not host():
+        return _linux_power(action)
+    # Power off / restart end the Kalyna session; "suspend" goes to Android's home screen.
+    host_request({"off": "exit", "restart": "restart", "suspend": "home"}.get(action, "home"))
+    return {"ok": True}
+
+
+def linux_apps():
+    out = _linux_apps()
+    h = host()
+    for a in (h or {}).get("apps", []):
+        pkg = a.get("package", "")
+        if not pkg:
+            continue
+        out.append({"id": "android:" + pkg, "name": a.get("name", pkg), "comment": "Android app", "kind": "android",
+                    "icon": a.get("icon", ""), "exec": "", "categories": "Android;", "wmclass": ""})
+    return sorted(out, key=lambda a: a["name"].lower())
+
+
+def launch(aid):
+    if aid.startswith("android:"):
+        return {"ok": host_request("launch", package=aid[len("android:"):])}
+    return _linux_launch(aid)
+
+
+def run_command(cmd):
+    if host() and cmd.strip().startswith("waydroid show-full-ui"):
+        return {"ok": host_request("home")}
+    return _linux_run_command(cmd)
+
+
+def android_state():
+    if not host():
+        return _linux_android_state()
+    return {"installed": True, "initialized": True, "running": True, "host": True}
+
+
+def android_start():
+    if not host():
+        return _linux_android_start()
+    return {"ok": True}
+
+
+def android_stop():
+    if not host():
+        return _linux_android_stop()
+    return {"ok": True}
+
 # ---------------------------------------------------------------- system info
 def info():
     mem = read("/proc/meminfo")

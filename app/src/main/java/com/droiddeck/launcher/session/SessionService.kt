@@ -477,6 +477,7 @@ class SessionService : Service() {
             it.replace("\\", "\\\\").replace(" ", "\\ ")
         }
         watchLaunchRequests(sessionRoot)
+        if (SessionState.mode == MODE_DESKTOP) ua.volodymyr.kalyna.HostBridge.start(this, sessionRoot)
         watchSyncWanted(root)
         EsyncPacks.fetchInBackground(this, root)
         val pid = HostProcess.start(line, hostEnv.asArray(), root, { status ->
@@ -494,6 +495,7 @@ class SessionService : Service() {
             if (gen == sessionGen) {
                 launchWatcher?.stopWatching()
                 launchWatcher = null
+                ua.volodymyr.kalyna.HostBridge.stop()
                 syncWatcher?.stopWatching()
                 syncWatcher = null
                 components.reversed().forEach { runCatching { it.stop() } }
@@ -1421,6 +1423,7 @@ class SessionService : Service() {
         suspendOperationPending = false
         launchWatcher?.stopWatching()
         launchWatcher = null
+        ua.volodymyr.kalyna.HostBridge.stop()
         syncWatcher?.stopWatching()
         syncWatcher = null
         val prootPid = sessionPid
