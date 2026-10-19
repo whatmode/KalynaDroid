@@ -36,6 +36,8 @@ done < "$work/pkglist.txt"
 cp -a "$shell/." "$work/root/"
 cp -a "$here/overlay/." "$work/root/"
 chmod 755 "$work/root/usr/local/bin/"* 2>/dev/null || true
+# The shell arrives through a workflow artifact, which drops executable bits.
+chmod 755 "$work/root/usr/bin/kalyna-shell"
 rm -rf "$work/root/usr/share/doc" "$work/root/usr/share/man" "$work/root/usr/share/info" \
        "$work/root/usr/share/gtk-doc" "$work/root/usr/include" "$work/root/usr/lib/pkgconfig" \
        "$work/root/usr/lib/cmake" "$work/root/usr/share/help"
