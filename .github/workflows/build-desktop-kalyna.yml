@@ -1,0 +1,60 @@
+name: Build Kalyna desktop package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'kalyna/**'
+      - 'tools/desktop-kalyna/**'
+      - '.github/workflows/build-desktop-kalyna.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shell:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build kalyna-shell (Qt 6, Arch Linux ARM chroot)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zstd xz-utils gpgv >/dev/null
+          set -o pipefail
+          bash tools/desktop-kalyna/build-shell.sh out/shell 2>&1 | tee shell.log || {
+            { grep -E "error|Error|CMake Error" shell.log | head -10; } | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kalyna-shell
+          retention-days: 7
+          path: out/
+  package:
+    needs: shell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: kalyna-shell
+          path: out
+      - name: Build the package
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq zstd xz-utils gpgv >/dev/null
+          bash tools/desktop-kalyna/build.sh pkg out/shell
+          cp out/desktop-kalyna.shell.txt pkg/ 2>/dev/null || true
+          echo "::notice::desktop-kalyna sha256 $(cat pkg/desktop-kalyna.sha256) size $(cat pkg/desktop-kalyna.size)"
+      - name: Publish as a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=desktop-kalyna-r${{ github.run_number }}
+          gh release create "$tag" -R "${{ github.repository }}" --title "Kalyna desktop package r${{ github.run_number }}" \
+            --notes "kalyna-shell $(cat kalyna/native/VERSION) · sha256 $(cat pkg/desktop-kalyna.sha256) · size $(cat pkg/desktop-kalyna.size)" \
+            --latest=false \
+            pkg/desktop-kalyna.tar.zst pkg/desktop-kalyna.sha256 pkg/desktop-kalyna.packages.txt
+          echo "::notice::published $tag"

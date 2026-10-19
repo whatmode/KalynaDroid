@@ -1,0 +1,13 @@
+qt6-base
+qt6-declarative
+qt6-wayland
+qt6-svg
+qt6-virtualkeyboard
+python
+wayland-utils
+noto-fonts
+noto-fonts-emoji
+foot
+firefox
+mpv
+xdg-utils

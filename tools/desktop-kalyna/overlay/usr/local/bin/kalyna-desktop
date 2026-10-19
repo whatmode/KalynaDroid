@@ -1,0 +1,42 @@
+#!/bin/bash
+# Kalyna OS on Android: kalyna-shell (Qt 6 Wayland compositor) runs full-screen nested in the app's
+# own compositor (wayland-0); Linux apps started from Kalyna connect to Kalyna's socket (wayland-1).
+set -u
+export XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=Kalyna XDG_SESSION_DESKTOP=Kalyna
+export QT_QPA_PLATFORM=wayland
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+export QT_FORCE_STDERR_LOGGING=1
+export MOZ_ENABLE_WAYLAND=1 MOZ_DISABLE_CONTENT_SANDBOX=1 MOZ_DISABLE_GMP_SANDBOX=1 MOZ_DISABLE_RDD_SANDBOX=1
+export MOZ_DISABLE_SOCKET_PROCESS_SANDBOX=1 MOZ_DISABLE_UTILITY_SANDBOX=1 MOZ_SHM_NO_SEALS=1
+export SHELL=/bin/bash
+export KALYNA_WAYLAND_SOCKET=wayland-1
+export WAYLAND_DISPLAY=wayland-0
+# Rendering: the shell needs OpenGL for its glass shader. "zink" draws through the phone's Vulkan
+# driver (Turnip on Adreno, PanVK on Mali); otherwise Mesa's llvmpipe draws on the CPU.
+case "${KALYNA_GPU:-${BL_KALYNA_GPU:-software}}" in
+  zink) export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink LIBGL_KOPPER_DRI2=true; unset LIBGL_ALWAYS_SOFTWARE ;;
+  *) export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe; unset MESA_LOADER_DRIVER_OVERRIDE ;;
+esac
+if [ -n "${BL_DEBUG_DIR:-}" ]; then
+  mkdir -p "$BL_DEBUG_DIR" 2>/dev/null || true
+  exec >>"$BL_DEBUG_DIR/kalyna.log" 2>&1
+fi
+echo "== kalyna-desktop $(date -u '+%Y-%m-%d %H:%M:%S UTC') ${BL_WIDTH:-1280}x${BL_HEIGHT:-720} gpu=${GALLIUM_DRIVER:-?}"
+find "$XDG_RUNTIME_DIR" -mindepth 1 -maxdepth 1 ! -name 'wayland-0*' ! -name 'keymap.xkb' -exec rm -rf {} + 2>/dev/null
+chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null
+mkdir -p "$HOME/.config/kalyna" "$HOME/Desktop" "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" 2>/dev/null
+[ -f /usr/share/glib-2.0/schemas/gschemas.compiled ] || glib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null
+fc-list >/dev/null 2>&1 || true
+restarts=0
+while :; do
+  start=$(date +%s)
+  dbus-run-session -- /usr/bin/kalyna-shell --nested --size "${BL_WIDTH:-1280}x${BL_HEIGHT:-720}"
+  rc=$?
+  echo "== kalyna-shell ended ($rc)"
+  [ -e "$XDG_RUNTIME_DIR/kalyna-exit" ] && break
+  # A crash right after start would loop forever: give up after a few quick ones.
+  if [ $(( $(date +%s) - start )) -lt 10 ]; then restarts=$((restarts + 1)); else restarts=0; fi
+  [ "$restarts" -ge 3 ] && { echo "== kalyna-shell keeps failing at start; see kalyna.log"; exit "$rc"; }
+  sleep 1
+done
+exit 0

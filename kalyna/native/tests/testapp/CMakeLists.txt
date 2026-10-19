@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.21)
+project(kalyna-testapp LANGUAGES CXX)
+find_package(Qt6 REQUIRED COMPONENTS Quick)
+qt_standard_project_setup(REQUIRES 6.5)
+qt_add_executable(kalyna-testapp main.cpp)
+qt_add_qml_module(kalyna-testapp URI TestApp VERSION 1.0 QML_FILES Main.qml)
+target_link_libraries(kalyna-testapp PRIVATE Qt6::Quick)

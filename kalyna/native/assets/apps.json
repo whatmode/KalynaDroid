@@ -1,0 +1,106 @@
+{
+ "files": {
+  "name": "Files",
+  "glyph": "folder",
+  "colors": [
+   "#eab14a",
+   "#c47d1f"
+  ]
+ },
+ "terminal": {
+  "name": "Terminal",
+  "glyph": "term",
+  "colors": [
+   "#40364a",
+   "#19151c"
+  ]
+ },
+ "editor": {
+  "name": "Text Editor",
+  "glyph": "edit",
+  "colors": [
+   "#6b9bf2",
+   "#3d67cf"
+  ]
+ },
+ "monitor": {
+  "name": "System Monitor",
+  "glyph": "pulse",
+  "colors": [
+   "#43c193",
+   "#1d8665"
+  ]
+ },
+ "settings": {
+  "name": "Settings",
+  "glyph": "gear",
+  "colors": [
+   "#9a92a5",
+   "#5a5363"
+  ]
+ },
+ "calc": {
+  "name": "Calculator",
+  "glyph": "calc",
+  "colors": [
+   "#f08a57",
+   "#cf5527"
+  ]
+ },
+ "snake": {
+  "name": "Snake",
+  "glyph": "snake",
+  "colors": [
+   "#86cc5f",
+   "#47942d"
+  ]
+ },
+ "music": {
+  "name": "Music",
+  "glyph": "music",
+  "colors": [
+   "#ff7a8a",
+   "#d43567"
+  ]
+ },
+ "gpu": {
+  "name": "GPU Info",
+  "glyph": "chip",
+  "colors": [
+   "#6d7cf0",
+   "#3b47b8"
+  ]
+ },
+ "speaker": {
+  "name": "Speaker Test",
+  "glyph": "speaker",
+  "colors": [
+   "#d65b9a",
+   "#9a2e68"
+  ]
+ },
+ "browser": {
+  "name": "Browser",
+  "glyph": "globe",
+  "colors": [
+   "#5aa8ff",
+   "#2a62d6"
+  ]
+ },
+ "android": {
+  "name": "Android Apps",
+  "glyph": "android",
+  "colors": [
+   "#5fd08a",
+   "#1f8f55"
+  ]
+ },
+ "about": {
+  "name": "About Kalyna",
+  "glyph": "info",
+  "colors": [
+   "#e0574e",
+   "#a52d28"
+  ]
+ }
+}

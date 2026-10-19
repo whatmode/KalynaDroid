@@ -1,5 +1,7 @@
 #!/bin/bash
 set -u
+# KalynaDroid: the desktop is Kalyna OS when its package is installed.
+[ -x /usr/local/bin/kalyna-desktop ] && [ -x /usr/bin/kalyna-shell ] && exec /usr/local/bin/kalyna-desktop
 export XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE XDG_SESSION_DESKTOP=KDE DESKTOP_SESSION=plasma
 export KDE_FULL_SESSION=true KDE_SESSION_VERSION=6 KDE_APPLICATIONS_AS_SCOPE=0
 export QT_QPA_PLATFORM="wayland;xcb" GDK_BACKEND=wayland,x11 SDL_VIDEODRIVER=wayland,x11
