@@ -54,11 +54,12 @@ object DesktopCatalog {
         installed(context, PROTON_SEED_ID) == null &&
             !File(LinuxRuntime.rootDir(context), "root/.local/share/Steam/steamapps/appmanifest_4427310.acf").isFile
 
-    const val DESKTOP_ID = "desktop-kde"
+    const val DESKTOP_ID = "desktop-kalyna"
 
+    /** KalynaDroid: the desktop is the Kalyna OS package (tools/desktop-kalyna/release.env). */
     fun desktopEntry(context: Context) = Entry(
-        DESKTOP_ID, context.getString(R.string.content_linux_desktop), 1, BuildConfig.DESKTOP_KDE_TAG, "tar",
-        BuildConfig.DESKTOP_KDE_URL, BuildConfig.DESKTOP_KDE_SHA256, BuildConfig.DESKTOP_KDE_SIZE, "",
+        DESKTOP_ID, "Kalyna OS", 1, BuildConfig.KALYNA_TAG, "tar",
+        BuildConfig.KALYNA_URL, BuildConfig.KALYNA_SHA256, BuildConfig.KALYNA_SIZE, "",
         "", "",
     )
 
@@ -66,8 +67,8 @@ object DesktopCatalog {
 
     fun desktopInstalled(root: File): Boolean =
         !File(root, DesktopRemoval.PENDING).exists() &&
-        File(root, "usr/bin/kwin_wayland").isFile &&
-            FileUtils.readString(File(root, ".droiddeck-pkg-$DESKTOP_ID"))?.trim() == BuildConfig.DESKTOP_KDE_TAG
+        File(root, "usr/bin/kalyna-shell").isFile &&
+            FileUtils.readString(File(root, ".droiddeck-pkg-$DESKTOP_ID"))?.trim() == BuildConfig.KALYNA_TAG
 
     fun desktopPresent(context: Context): Boolean {
         val root = LinuxRuntime.rootDir(context)

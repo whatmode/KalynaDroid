@@ -77,6 +77,9 @@ def commitTime = (gitValue(['show', '-s', '--format=%ct', 'HEAD']) ?: '0').with 
 def desktopKde = rootProject.file('tools/desktop-kde/release.env').readLines()
     .findAll { it.contains('=') && !it.startsWith('#') }
     .collectEntries { def kv = it.split('=', 2); [(kv[0].trim()): kv[1].trim()] }
+def kalynaPkg = rootProject.file('tools/desktop-kalyna/release.env').readLines()
+    .findAll { it.contains('=') && !it.startsWith('#') }
+    .collectEntries { def kv = it.split('=', 2); [(kv[0].trim()): kv[1].trim()] }
 def desktopRemovalSources = new groovy.json.JsonSlurper().parse(file('src/main/assets/desktop-removal/sources.json'))
 if (desktopRemovalSources.archives[desktopKde.DESKTOP_KDE_TAG] != desktopKde.DESKTOP_KDE_SHA256) {
     throw new GradleException('Desktop removal inventories do not match the pinned archive')
@@ -95,7 +98,7 @@ android {
     ndkVersion project.findProperty('ndkVersion') ?: '27.3.13750724'
 
     defaultConfig {
-        applicationId "com.droiddeck.launcher"
+        applicationId "ua.volodymyr.kalynadroid"
         minSdkVersion 26
         targetSdkVersion 28
         versionCode 13
@@ -112,6 +115,10 @@ android {
         buildConfigField "String", "DESKTOP_KDE_URL", "\"https://github.com/${desktopKde.DESKTOP_KDE_REPO}/releases/download/${desktopKde.DESKTOP_KDE_TAG}/desktop-kde.tar.zst\""
         buildConfigField "String", "DESKTOP_KDE_SHA256", "\"${desktopKde.DESKTOP_KDE_SHA256}\""
         buildConfigField "long", "DESKTOP_KDE_SIZE", "${desktopKde.DESKTOP_KDE_SIZE}L"
+        buildConfigField "String", "KALYNA_TAG", "\"${kalynaPkg.KALYNA_TAG}\""
+        buildConfigField "String", "KALYNA_URL", "\"https://github.com/${kalynaPkg.KALYNA_REPO}/releases/download/${kalynaPkg.KALYNA_TAG}/desktop-kalyna.tar.zst\""
+        buildConfigField "String", "KALYNA_SHA256", "\"${kalynaPkg.KALYNA_SHA256}\""
+        buildConfigField "long", "KALYNA_SIZE", "${kalynaPkg.KALYNA_SIZE}L"
 
         ndk {
             abiFilters 'arm64-v8a'

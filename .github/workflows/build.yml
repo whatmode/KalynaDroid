@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 concurrency:
@@ -602,6 +602,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
+
+      - name: Publish the APK as a release (KalynaDroid)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          name=KalynaOS-r${{ github.run_number }}.apk
+          cp "$APK" "$name"
+          gh release create "kalynadroid-r${{ github.run_number }}" -R "${{ github.repository }}" \
+            --title "Kalyna OS for Android r${{ github.run_number }}" --notes "Built from ${{ github.sha }}" "$name"
+          echo "::notice::published kalynadroid-r${{ github.run_number }}"
 
       - name: Report on the pull request
         if: always() && github.event_name == 'pull_request'
