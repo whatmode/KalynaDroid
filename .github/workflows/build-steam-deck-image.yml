@@ -1,0 +1,77 @@
+name: Build KalynaOS CachyOS Handheld microSD image
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/steam-deck-image/**"
+      - "kalyna/native/packaging/PKGBUILD"
+      - "kalyna/native/VERSION"
+      - ".github/workflows/build-steam-deck-image.yml"
+  pull_request:
+    paths:
+      - "tools/steam-deck-image/**"
+      - "kalyna/native/packaging/PKGBUILD"
+      - "kalyna/native/VERSION"
+      - ".github/workflows/build-steam-deck-image.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: kalynaos-handheld-image-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native Kalyna package
+        run: |
+          pacman -Syu --noconfirm --needed base-devel cmake ninja pkgconf qt6-base qt6-declarative qt6-wayland qt6-shadertools qt6-svg qt6-virtualkeyboard sdl2 python
+          useradd -m builder
+          printf 'builder ALL=(ALL) NOPASSWD: ALL\\n' > /etc/sudoers.d/builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          su builder -c "cd '$GITHUB_WORKSPACE/kalyna/native/packaging' && makepkg --syncdeps --noconfirm --cleanbuild"
+          mkdir -p dist
+          cp kalyna/native/packaging/kalyna-native-[0-9]*-x86_64.pkg.tar.zst dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kalyna-native-for-handheld-image
+          path: dist/*.pkg.tar.zst
+          retention-days: 2
+  image:
+    needs: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: kalyna-native-for-handheld-image
+          path: dist/package
+      - name: Build pinned CachyOS Handheld bootc disk image
+        env:
+          UPSTREAM_SHA: b37f8727250f4d6e78212ef65d006d905d2039a9
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y podman xz-utils
+          git clone https://github.com/Lumaeris/cachyos-deckify-bootc.git .cache/cachyos-deckify-bootc
+          git -C .cache/cachyos-deckify-bootc checkout "$UPSTREAM_SHA"
+          pkg=$(find dist/package -name '*.pkg.tar.zst' -print -quit)
+          test -n "$pkg"
+          sudo env KALYNAOS_UPSTREAM_DIR="$GITHUB_WORKSPACE/.cache/cachyos-deckify-bootc" bash tools/steam-deck-image/build.sh "$pkg" "$GITHUB_WORKSPACE/dist/image"
+      - name: Verify compressed raw image
+        run: |
+          set -euo pipefail
+          test -s dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+          (cd dist/image && sha256sum --check KalynaOS-CachyOS-Handheld-SteamDeck.img.xz.sha256)
+          xz -t dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kalynaos-cachyos-handheld-steamdeck-microsd
+          path: |
+            dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+            dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz.sha256
+          retention-days: 30

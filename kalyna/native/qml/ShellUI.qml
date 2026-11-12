@@ -39,6 +39,14 @@ Item {
         current = null; internalApp = null; recentsShown = false; qsShown = false; launching = ""
         screenItem.forceActiveFocus(); Qt.inputMethod.hide()
     }
+    function controllerBack() {
+        if (qsShown) { qsShown = false; return }
+        if (recentsShown) { recentsShown = false; return }
+        if (homeShown && !internalApp && home.drawerOpen) { home.drawerOpen = false; return }
+        if (internalApp) { internalApp = null; screenItem.forceActiveFocus(); return }
+        if (current) { closeWindow(current); return }
+        showHome()
+    }
     function focusWindow(w) {
         recentsShown = false; qsShown = false; internalApp = null
         current = w
@@ -355,8 +363,42 @@ Item {
         onTriggered: { Shell.grab(shell, Shell.screenshotPath); Shell.quit() }
     }
 
-    // ---------------------------------------------------------------- keys
+    // ---------------------------------------------------------------- desktop keyboard + Steam Deck controller
     Shortcut { sequence: "Meta+Q"; onActivated: shell.closeWindow(shell.current) }
+    Shortcut { sequence: "Up"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(0, -1) }
+    Shortcut { sequence: "Down"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(0, 1) }
+    Shortcut { sequence: "Left"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(-1, 0) }
+    Shortcut { sequence: "Right"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(1, 0) }
+    Shortcut { sequence: "Return"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.activateSelected() }
+    Shortcut { sequence: "Enter"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.activateSelected() }
+
+    Connections {
+        target: Shell
+        function onControllerAction(action) {
+            if (action === "up" && shell.homeShown && !shell.internalApp) home.moveSelection(0, -1)
+            else if (action === "down" && shell.homeShown && !shell.internalApp) home.moveSelection(0, 1)
+            else if (action === "left" && shell.homeShown && !shell.internalApp) home.moveSelection(-1, 0)
+            else if (action === "right" && shell.homeShown && !shell.internalApp) home.moveSelection(1, 0)
+            else if (action === "a" && shell.homeShown && !shell.internalApp) home.activateSelected()
+            else if (action === "b") shell.controllerBack()
+            else if (action === "y") shell.recentsShown = !shell.recentsShown
+            else if (action === "start") shell.qsShown = !shell.qsShown
+            else if (action === "guide") shell.showHome()
+        }
+    }
+    Timer {
+        interval: 190
+        repeat: true
+        running: shell.homeShown && !shell.internalApp && Shell.controllerConnected
+                 && (Math.abs(Shell.controllerAxisX) > 18000 || Math.abs(Shell.controllerAxisY) > 18000)
+        onTriggered: {
+            if (Math.abs(Shell.controllerAxisX) > 18000)
+                home.moveSelection(Shell.controllerAxisX < 0 ? -1 : 1, 0)
+            else if (Math.abs(Shell.controllerAxisY) > 18000)
+                home.moveSelection(0, Shell.controllerAxisY < 0 ? -1 : 1)
+        }
+    }
+
     // hardware keys (Steam Deck volume rocker, laptop brightness keys)
     function nudgeVolume(d) { System.call("volume.set", { percent: Math.max(0, Math.min(100, (System.volume.percent || 0) + d)) }) }
     function nudgeBrightness(d) { System.call("brightness.set", { percent: Math.max(5, Math.min(100, (System.brightness.percent || 0) + d)) }) }

@@ -7,6 +7,9 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <QQuickItem>
+#include <QTimer>
+#include <array>
+#include <SDL.h>
 
 class Shell : public QObject {
     Q_OBJECT
@@ -24,6 +27,9 @@ class Shell : public QObject {
     // phone layout (home screen + app drawer) and a fixed UI scale, set by Kalyna on Android
     Q_PROPERTY(bool phone READ phone CONSTANT)
     Q_PROPERTY(qreal uiScale READ uiScale CONSTANT)
+    Q_PROPERTY(bool controllerConnected READ controllerConnected NOTIFY controllerChanged)
+    Q_PROPERTY(int controllerAxisX READ controllerAxisX NOTIFY controllerChanged)
+    Q_PROPERTY(int controllerAxisY READ controllerAxisY NOTIFY controllerChanged)
 
 public:
     explicit Shell(QObject *parent = nullptr);
@@ -38,6 +44,9 @@ public:
     QString screenshotPath() const;
     bool phone() const;
     qreal uiScale() const;
+    bool controllerConnected() const { return m_controller != nullptr; }
+    int controllerAxisX() const { return m_axisX; }
+    int controllerAxisY() const { return m_axisY; }
     bool touchLast() const { return m_touchLast; }
 
     Q_INVOKABLE QUrl asset(const QString &rel) const;
@@ -52,11 +61,19 @@ public:
 
 signals:
     void touchLastChanged();
+    void controllerChanged();
+    void controllerAction(const QString &action);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *ev) override;
 
 private:
     bool m_touchLast = false;
+    SDL_GameController *m_controller = nullptr;
+    QTimer m_controllerTimer;
+    std::array<bool, 32> m_controllerButtons{};
+    int m_axisX = 0;
+    int m_axisY = 0;
+    void pollController();
     mutable QHash<QString, QByteArray> m_glyphs;
 };

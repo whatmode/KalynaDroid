@@ -9,6 +9,8 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Network Qml Quick WaylandCompositor ShaderTools)
 qt_standard_project_setup(REQUIRES 6.5)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
 
 qt_add_executable(kalyna-shell
     src/main.cpp
@@ -36,7 +38,7 @@ qt_add_shaders(kalyna-shell "kalyna_shaders"
 )
 
 target_link_libraries(kalyna-shell PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::WaylandCompositor)
+    Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::WaylandCompositor PkgConfig::SDL2)
 
 include(GNUInstallDirs)
 install(TARGETS kalyna-shell RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

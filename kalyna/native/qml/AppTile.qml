@@ -5,6 +5,7 @@ import Kalyna
 Item {
     id: t
     property var app
+    property bool selected: false
     signal activated()
     height: Theme.px(108)
 
@@ -12,7 +13,9 @@ Item {
         anchors.fill: parent
         anchors.margins: Theme.px(3)
         radius: Theme.px(14)
-        color: Qt.rgba(1, 1, 1, ma.pressed ? 0.16 : (ma.containsMouse ? 0.08 : 0))
+        color: t.selected ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22) : Qt.rgba(1, 1, 1, ma.pressed ? 0.16 : (ma.containsMouse ? 0.08 : 0))
+        border.width: t.selected ? Theme.px(2) : 0
+        border.color: Theme.accent
         Behavior on color { ColorAnimation { duration: 90 } }
     }
     Column {
