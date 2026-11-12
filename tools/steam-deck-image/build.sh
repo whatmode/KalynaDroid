@@ -11,6 +11,33 @@ mkdir -p "$out"
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 cp -a "$src/." "$work/"
 cp "$pkg" "$work/kalyna-native.pkg.tar.zst"
+
+# The pinned upstream revision hard-codes an archived Arch bootstrap URL that
+# has disappeared from the mirror. Keep the upstream CachyOS composition, but
+# fetch the current official bootstrap and verify it against Arch's published
+# SHA256 manifest so this stage does not depend on a retired monthly snapshot.
+python3 - "$work/Containerfile" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+start = text.index('ENV VERSION="')
+end_marker = "    apk cache clean"
+end = text.index(end_marker, start) + len(end_marker)
+replacement = """RUN apk add gnutar zstd curl && \\
+    curl -fL --retry 3 https://geo.mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-x86_64.tar.zst -o /archlinux-bootstrap-x86_64.tar.zst && \\
+    curl -fL --retry 3 https://geo.mirror.pkgbuild.com/iso/latest/sha256sums.txt -o /sha256sums.txt && \\
+    grep -E '[[:space:]]archlinux-bootstrap-x86_64.tar.zst$' /sha256sums.txt > /bootstrap.sha256 && \\
+    sha256sum -c /bootstrap.sha256 && \\
+    tar -xf /archlinux-bootstrap-x86_64.tar.zst --numeric-owner && \\
+    rm -f /archlinux-bootstrap-x86_64.tar.zst /sha256sums.txt /bootstrap.sha256 && \\
+    apk del gnutar zstd curl && \\
+    apk cache clean"""
+text = text[:start] + replacement + text[end:]
+path.write_text(text)
+PY
+
 cat >> "$work/Containerfile" <<'CONTAINER'
 COPY kalyna-native.pkg.tar.zst /tmp/kalyna-native.pkg.tar.zst
 RUN --mount=type=tmpfs,dst=/run pacman -U --noconfirm /tmp/kalyna-native.pkg.tar.zst && rm -f /tmp/kalyna-native.pkg.tar.zst
