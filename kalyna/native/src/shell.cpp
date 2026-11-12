@@ -10,11 +10,76 @@
 #include <QQuickWindow>
 #include <QTouchEvent>
 #include <QMouseEvent>
+#include <SDL.h>
 
 Shell::Shell(QObject *parent) : QObject(parent)
 {
     // remember whether the last input came from the touchscreen (shows the on-screen keyboard then)
     qApp->installEventFilter(this);
+
+    // SDL maps the Deck's built-in controller to a stable game-controller layout.
+    if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) == 0) {
+        SDL_GameControllerEventState(SDL_ENABLE);
+        m_controllerTimer.setInterval(16);
+        connect(&m_controllerTimer, &QTimer::timeout, this, &Shell::pollController);
+        m_controllerTimer.start();
+        pollController();
+    }
+}
+
+void Shell::pollController()
+{
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_CONTROLLERDEVICEADDED && !m_controller
+            && SDL_IsGameController(event.cdevice.which)) {
+            m_controller = SDL_GameControllerOpen(event.cdevice.which);
+            emit controllerChanged();
+        } else if (event.type == SDL_CONTROLLERDEVICEREMOVED && m_controller
+                   && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(m_controller))) {
+            SDL_GameControllerClose(m_controller);
+            m_controller = nullptr;
+            m_controllerButtons.fill(false);
+            m_axisX = m_axisY = 0;
+            emit controllerChanged();
+        }
+    }
+
+    if (!m_controller) {
+        for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+            if (SDL_IsGameController(i)) {
+                m_controller = SDL_GameControllerOpen(i);
+                if (m_controller) emit controllerChanged();
+                break;
+            }
+        }
+    }
+    if (!m_controller || !SDL_GameControllerGetAttached(m_controller)) return;
+
+    SDL_GameControllerUpdate();
+    const SDL_GameControllerButton buttons[] = {
+        SDL_CONTROLLER_BUTTON_DPAD_UP, SDL_CONTROLLER_BUTTON_DPAD_DOWN,
+        SDL_CONTROLLER_BUTTON_DPAD_LEFT, SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
+        SDL_CONTROLLER_BUTTON_A, SDL_CONTROLLER_BUTTON_B,
+        SDL_CONTROLLER_BUTTON_Y, SDL_CONTROLLER_BUTTON_START,
+        SDL_CONTROLLER_BUTTON_GUIDE
+    };
+    const char *actions[] = {"up", "down", "left", "right", "a", "b", "y", "start", "guide"};
+    for (size_t i = 0; i < std::size(buttons); ++i) {
+        const bool pressed = SDL_GameControllerGetButton(m_controller, buttons[i]) != 0;
+        const int index = static_cast<int>(buttons[i]);
+        if (pressed && !m_controllerButtons[index])
+            emit controllerAction(QString::fromLatin1(actions[i]));
+        m_controllerButtons[index] = pressed;
+    }
+
+    const int x = SDL_GameControllerGetAxis(m_controller, SDL_CONTROLLER_AXIS_LEFTX);
+    const int y = SDL_GameControllerGetAxis(m_controller, SDL_CONTROLLER_AXIS_LEFTY);
+    if (x != m_axisX || y != m_axisY) {
+        m_axisX = x;
+        m_axisY = y;
+        emit controllerChanged();
+    }
 }
 
 bool Shell::eventFilter(QObject *obj, QEvent *ev)
