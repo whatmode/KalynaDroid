@@ -1,0 +1,39 @@
+# Maintainer: KalynaOS contributors
+pkgname=kalyna-native
+pkgver=2.0.0
+pkgrel=1
+pkgdesc="Native Qt 6 Wayland shell for KalynaOS"
+arch=('x86_64')
+url="https://github.com/whatmode/KalynaDroid"
+license=('custom')
+depends=(
+  'qt6-base'
+  'qt6-declarative'
+  'qt6-wayland'
+  'qt6-shadertools'
+  'qt6-svg'
+  'qt6-virtualkeyboard'
+  'python'
+)
+optdepends=(
+  'networkmanager: Wi-Fi management'
+  'pipewire: audio volume control'
+  'wireplumber: PipeWire session management'
+  'brightnessctl: backlight control'
+  'bluez-utils: Bluetooth controls'
+  'waydroid: Android app support'
+)
+makedepends=('cmake' 'ninja' 'gcc' 'pkgconf')
+source=()
+sha256sums=()
+
+build() {
+  cmake -S "$startdir" -B "$srcdir/build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build "$srcdir/build" --parallel
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
+}
