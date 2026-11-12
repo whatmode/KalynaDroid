@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.VirtualKeyboard
 import QtQuick.VirtualKeyboard.Settings
+import QtGamepad
 import QtWayland.Compositor
 import QtWayland.Compositor.XdgShell
 import Kalyna
@@ -38,6 +39,14 @@ Item {
         if (homeShown && !internalApp && home.drawerOpen) { home.drawerOpen = false; return }
         current = null; internalApp = null; recentsShown = false; qsShown = false; launching = ""
         screenItem.forceActiveFocus(); Qt.inputMethod.hide()
+    }
+    function controllerBack() {
+        if (qsShown) { qsShown = false; return }
+        if (recentsShown) { recentsShown = false; return }
+        if (homeShown && !internalApp && home.drawerOpen) { home.drawerOpen = false; return }
+        if (internalApp) { internalApp = null; screenItem.forceActiveFocus(); return }
+        if (current) { closeWindow(current); return }
+        showHome()
     }
     function focusWindow(w) {
         recentsShown = false; qsShown = false; internalApp = null
@@ -355,8 +364,40 @@ Item {
         onTriggered: { Shell.grab(shell, Shell.screenshotPath); Shell.quit() }
     }
 
-    // ---------------------------------------------------------------- keys
+    // ---------------------------------------------------------------- desktop keyboard + Steam Deck controller
     Shortcut { sequence: "Meta+Q"; onActivated: shell.closeWindow(shell.current) }
+    Shortcut { sequence: "Up"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(0, -1) }
+    Shortcut { sequence: "Down"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(0, 1) }
+    Shortcut { sequence: "Left"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(-1, 0) }
+    Shortcut { sequence: "Right"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.moveSelection(1, 0) }
+    Shortcut { sequence: "Return"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.activateSelected() }
+    Shortcut { sequence: "Enter"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.activateSelected() }
+
+    Gamepad {
+        id: deckPad
+        deviceId: GamepadManager.connectedGamepads.length > 0 ? GamepadManager.connectedGamepads[0] : -1
+        onButtonUpChanged: if (buttonUp && shell.homeShown && !shell.internalApp) home.moveSelection(0, -1)
+        onButtonDownChanged: if (buttonDown && shell.homeShown && !shell.internalApp) home.moveSelection(0, 1)
+        onButtonLeftChanged: if (buttonLeft && shell.homeShown && !shell.internalApp) home.moveSelection(-1, 0)
+        onButtonRightChanged: if (buttonRight && shell.homeShown && !shell.internalApp) home.moveSelection(1, 0)
+        onButtonAChanged: if (buttonA && shell.homeShown && !shell.internalApp) home.activateSelected()
+        onButtonBChanged: if (buttonB) shell.controllerBack()
+        onButtonYChanged: if (buttonY) shell.recentsShown = !shell.recentsShown
+        onButtonStartChanged: if (buttonStart) shell.qsShown = !shell.qsShown
+        onButtonGuideChanged: if (buttonGuide) shell.showHome()
+    }
+    Timer {
+        interval: 190
+        repeat: true
+        running: shell.homeShown && !shell.internalApp && deckPad.deviceId >= 0
+                 && (Math.abs(deckPad.axisLeftX) > 0.55 || Math.abs(deckPad.axisLeftY) > 0.55)
+        onTriggered: {
+            if (Math.abs(deckPad.axisLeftX) > 0.55)
+                home.moveSelection(deckPad.axisLeftX < 0 ? -1 : 1, 0)
+            else if (Math.abs(deckPad.axisLeftY) > 0.55)
+                home.moveSelection(0, deckPad.axisLeftY < 0 ? -1 : 1)
+        }
+    }
     // hardware keys (Steam Deck volume rocker, laptop brightness keys)
     function nudgeVolume(d) { System.call("volume.set", { percent: Math.max(0, Math.min(100, (System.volume.percent || 0) + d)) }) }
     function nudgeBrightness(d) { System.call("brightness.set", { percent: Math.max(5, Math.min(100, (System.brightness.percent || 0) + d)) }) }
