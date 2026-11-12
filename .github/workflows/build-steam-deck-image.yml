@@ -84,7 +84,7 @@ jobs:
             archlinux:latest bash -lc '
               set -euo pipefail
               pacman -Syu --noconfirm --needed archiso pacman-contrib
-              bash tools/steam-deck-image/build.sh "$1" /workspace/dist/image
+              bash tools/steam-deck-image/build.sh "/workspace/dist/package/$(basename "$1")" /workspace/dist/image
             ' bash "$package"
 
       - name: Verify ISO and checksum
