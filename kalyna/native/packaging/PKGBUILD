@@ -1,7 +1,7 @@
 # Maintainer: KalynaOS contributors
 pkgname=kalyna-native
 pkgver=2.0.0
-pkgrel=4
+pkgrel=5
 pkgdesc="Native Qt 6 Wayland shell for KalynaOS"
 arch=('x86_64')
 url="https://github.com/whatmode/KalynaDroid"
