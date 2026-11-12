@@ -82,3 +82,5 @@ podman run --rm --privileged --pid=host -v /dev:/dev -v "$out:/out" localhost/ka
 xz -T0 -z -f "$image"
 sha256sum "$image.xz" > "$image.xz.sha256"
 ls -lh "$image.xz" "$image.xz.sha256"
+
+# Keep this path-filtered image workflow retriggerable after CI-only fixes.
