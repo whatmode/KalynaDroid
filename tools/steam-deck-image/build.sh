@@ -37,7 +37,7 @@ replacement = """RUN apk add gnutar zstd curl && \\
 # The upstream Containerfile invokes dracut before generating modules.dep.
 # Generate the kernel module index first, otherwise dracut aborts on a clean build.
 dracut_marker = '    dracut --force "$(find /usr/lib/modules -maxdepth 1 -type d | grep -v -E "*.img" | tail -n 1)/initramfs.img"'
-dracut_replacement = '    kernel_version="$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf \'%f\\n\' | sort -V | tail -n 1)" && \\\\n    depmod -a "$kernel_version" && \\\\n    dracut --force "/usr/lib/modules/$kernel_version/initramfs.img"'
+dracut_replacement = '    kernel_version="$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf \'%f\\n\' | sort -V | tail -n 1)" && depmod -a "$kernel_version" && dracut --force "/usr/lib/modules/$kernel_version/initramfs.img"'
 if dracut_marker not in text:
     raise SystemExit("Expected upstream dracut command not found; refusing to patch an unknown recipe")
 text = text.replace(dracut_marker, dracut_replacement, 1)
