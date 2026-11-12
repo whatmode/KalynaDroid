@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.VirtualKeyboard
 import QtQuick.VirtualKeyboard.Settings
-import QtGamepad
 import QtWayland.Compositor
 import QtWayland.Compositor.XdgShell
 import Kalyna
@@ -373,31 +372,33 @@ Item {
     Shortcut { sequence: "Return"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.activateSelected() }
     Shortcut { sequence: "Enter"; enabled: shell.homeShown && !shell.internalApp; onActivated: home.activateSelected() }
 
-    Gamepad {
-        id: deckPad
-        deviceId: GamepadManager.connectedGamepads.length > 0 ? GamepadManager.connectedGamepads[0] : -1
-        onButtonUpChanged: if (buttonUp && shell.homeShown && !shell.internalApp) home.moveSelection(0, -1)
-        onButtonDownChanged: if (buttonDown && shell.homeShown && !shell.internalApp) home.moveSelection(0, 1)
-        onButtonLeftChanged: if (buttonLeft && shell.homeShown && !shell.internalApp) home.moveSelection(-1, 0)
-        onButtonRightChanged: if (buttonRight && shell.homeShown && !shell.internalApp) home.moveSelection(1, 0)
-        onButtonAChanged: if (buttonA && shell.homeShown && !shell.internalApp) home.activateSelected()
-        onButtonBChanged: if (buttonB) shell.controllerBack()
-        onButtonYChanged: if (buttonY) shell.recentsShown = !shell.recentsShown
-        onButtonStartChanged: if (buttonStart) shell.qsShown = !shell.qsShown
-        onButtonGuideChanged: if (buttonGuide) shell.showHome()
+    Connections {
+        target: Shell
+        function onControllerAction(action) {
+            if (action === "up" && shell.homeShown && !shell.internalApp) home.moveSelection(0, -1)
+            else if (action === "down" && shell.homeShown && !shell.internalApp) home.moveSelection(0, 1)
+            else if (action === "left" && shell.homeShown && !shell.internalApp) home.moveSelection(-1, 0)
+            else if (action === "right" && shell.homeShown && !shell.internalApp) home.moveSelection(1, 0)
+            else if (action === "a" && shell.homeShown && !shell.internalApp) home.activateSelected()
+            else if (action === "b") shell.controllerBack()
+            else if (action === "y") shell.recentsShown = !shell.recentsShown
+            else if (action === "start") shell.qsShown = !shell.qsShown
+            else if (action === "guide") shell.showHome()
+        }
     }
     Timer {
         interval: 190
         repeat: true
-        running: shell.homeShown && !shell.internalApp && deckPad.deviceId >= 0
-                 && (Math.abs(deckPad.axisLeftX) > 0.55 || Math.abs(deckPad.axisLeftY) > 0.55)
+        running: shell.homeShown && !shell.internalApp && Shell.controllerConnected
+                 && (Math.abs(Shell.controllerAxisX) > 18000 || Math.abs(Shell.controllerAxisY) > 18000)
         onTriggered: {
-            if (Math.abs(deckPad.axisLeftX) > 0.55)
-                home.moveSelection(deckPad.axisLeftX < 0 ? -1 : 1, 0)
-            else if (Math.abs(deckPad.axisLeftY) > 0.55)
-                home.moveSelection(0, deckPad.axisLeftY < 0 ? -1 : 1)
+            if (Math.abs(Shell.controllerAxisX) > 18000)
+                home.moveSelection(Shell.controllerAxisX < 0 ? -1 : 1, 0)
+            else if (Math.abs(Shell.controllerAxisY) > 18000)
+                home.moveSelection(0, Shell.controllerAxisY < 0 ? -1 : 1)
         }
     }
+
     // hardware keys (Steam Deck volume rocker, laptop brightness keys)
     function nudgeVolume(d) { System.call("volume.set", { percent: Math.max(0, Math.min(100, (System.volume.percent || 0) + d)) }) }
     function nudgeBrightness(d) { System.call("brightness.set", { percent: Math.max(5, Math.min(100, (System.brightness.percent || 0) + d)) }) }
