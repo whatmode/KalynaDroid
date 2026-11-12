@@ -1,7 +1,7 @@
 name: Build KalynaOS CachyOS Handheld microSD image
 on:
   push:
-    branches: [main]
+    branches: [main, feature/steam-deck-bootable-image]
     paths:
       - "tools/steam-deck-image/**"
       - "kalyna/native/packaging/PKGBUILD"
