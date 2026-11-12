@@ -37,7 +37,7 @@ This builds the native shell and installs it with pacman, resolving its declared
 Open the latest successful **Build Kalyna native Arch package** run in the repository's Actions tab,
 download the `kalyna-native-arch-x86_64` artifact, extract it, then run:
 ```sh
-sudo pacman -U ./kalyna-native-2.0.0-4-x86_64.pkg.tar.zst
+sudo pacman -U ./kalyna-native-2.0.0-5-x86_64.pkg.tar.zst
 ```
 Use the exact package filename from the downloaded artifact if its version or release number differs.
 To verify installation:
@@ -46,12 +46,12 @@ pacman -Q kalyna-native
 ```
 
 ## Build manually
-Needs Qt 6.5+ with: Quick, WaylandCompositor, ShaderTools, Svg, VirtualKeyboard.
+Needs Qt 6.5+ with: Quick, WaylandCompositor, ShaderTools, Svg, VirtualKeyboard, plus SDL2 for gamepad input.
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
-On Arch / CachyOS: `pacman -S cmake ninja qt6-base qt6-declarative qt6-wayland qt6-shadertools qt6-svg qt6-virtualkeyboard`.
+On Arch / CachyOS: `pacman -S cmake ninja qt6-base qt6-declarative qt6-wayland qt6-shadertools qt6-svg qt6-virtualkeyboard sdl2`.
 
 ## Run
 * As the session (Steam Deck, PC): from a text console, `kalyna-shell` (KMS/eglfs, libinput).
@@ -59,6 +59,11 @@ On Arch / CachyOS: `pacman -S cmake ninja qt6-base qt6-declarative qt6-wayland q
   Apps started from it (or with `WAYLAND_DISPLAY=wayland-kalyna-test`) open inside.
 
 Options: `--rotate none|cw|ccw|180`, `--screenshot FILE`, `--test tests/TestDriver.qml --test-out DIR`.
+
+## Desktop and Steam Deck controls
+* Landscape desktop layout: clock and system status on the left, searchable app grid on the right, pinned dock along the bottom.
+* D-pad or left stick: move the app selection · A: launch · B: back/close · Y: recent apps · Menu/Start: quick settings · Steam/Guide: home.
+* Arrow keys and Enter provide the same home-screen navigation on a keyboard.
 
 ## Keys and gestures
 * Swipe up from the bottom edge: home; swipe up and hold: recent apps. Tap the Kalyna logo: home.
