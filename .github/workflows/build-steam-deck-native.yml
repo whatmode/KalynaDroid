@@ -1,4 +1,4 @@
-name: Build Kalyna native (Steam Deck x86_64)
+name: Build Kalyna native Arch package
 
 on:
   push:
@@ -21,51 +21,47 @@ concurrency:
 
 jobs:
   build:
-    name: Build x86_64 native shell
+    name: Build x86_64 pacman package
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    container:
+      image: archlinux:latest
+    timeout-minutes: 45
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install Arch build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config zstd \
-            qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-shadertools-dev
+          pacman -Syu --noconfirm --needed
+          pacman -S --noconfirm --needed \
+            base-devel cmake ninja pkgconf \
+            qt6-base qt6-declarative qt6-wayland qt6-shadertools \
+            qt6-svg qt6-virtualkeyboard python
 
-      - name: Configure
-        working-directory: kalyna/native
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
-
-      - name: Compile
-        working-directory: kalyna/native
-        run: cmake --build build --parallel 2
-
-      - name: Install into package staging directory
-        working-directory: kalyna/native
-        run: |
-          DESTDIR="$RUNNER_TEMP/stage" cmake --install build
-          test -x "$RUNNER_TEMP/stage/usr/bin/kalyna-shell"
-          test -f "$RUNNER_TEMP/stage/usr/lib/kalyna/kalyna-system.py"
-          test -d "$RUNNER_TEMP/stage/usr/share/kalyna/assets"
-
-      - name: Create build metadata and archive
+      - name: Build package with makepkg
         run: |
           set -euo pipefail
-          mkdir -p dist
-          version="$(tr -d '\n' < kalyna/native/VERSION)"
-          commit="$(git rev-parse HEAD)"
-          printf 'Kalyna native x86_64\nVersion: %s\nCommit: %s\nArchitecture: x86_64\n' "$version" "$commit" > "$RUNNER_TEMP/stage/BUILD-INFO.txt"
-          tar --zstd -C "$RUNNER_TEMP/stage" -cf "dist/kalyna-native-x86_64.tar.zst" .
-          sha256sum dist/kalyna-native-x86_64.tar.zst > dist/kalyna-native-x86_64.tar.zst.sha256
-          cp "$RUNNER_TEMP/stage/BUILD-INFO.txt" dist/
+          useradd --create-home builder
+          printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          su builder -c "cd '$GITHUB_WORKSPACE/kalyna/native' && makepkg --syncdeps --noconfirm --cleanbuild"
 
-      - name: Upload downloadable build
+      - name: Verify package
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(kalyna/native/kalyna-native-*.pkg.tar.zst)
+          test "${#packages[@]}" -eq 1
+          pacman -Qip "${packages[0]}"
+          mkdir -p dist
+          cp "${packages[0]}" dist/
+          sha256sum dist/*.pkg.tar.zst > dist/SHA256SUMS
+
+      - name: Upload pacman package
         uses: actions/upload-artifact@v4
         with:
-          name: kalyna-native-steam-deck-x86_64
+          name: kalyna-native-arch-x86_64
           path: dist/*
           if-no-files-found: error
           retention-days: 30
