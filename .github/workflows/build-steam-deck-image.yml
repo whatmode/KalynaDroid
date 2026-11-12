@@ -10,8 +10,9 @@ on:
       - ".github/workflows/build-steam-deck-image.yml"
   pull_request:
     paths:
-      - "kalyna/native/**"
       - "tools/steam-deck-image/**"
+      - "kalyna/native/packaging/PKGBUILD"
+      - "kalyna/native/VERSION"
       - ".github/workflows/build-steam-deck-image.yml"
   workflow_dispatch:
 
