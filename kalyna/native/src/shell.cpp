@@ -65,7 +65,7 @@ void Shell::pollController()
         SDL_CONTROLLER_BUTTON_GUIDE
     };
     const char *actions[] = {"up", "down", "left", "right", "a", "b", "y", "start", "guide"};
-    for (size_t i = 0; i < std::size(buttons); ++i) {
+    for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); ++i) {
         const bool pressed = SDL_GameControllerGetButton(m_controller, buttons[i]) != 0;
         const int index = static_cast<int>(buttons[i]);
         if (pressed && !m_controllerButtons[index])
