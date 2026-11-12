@@ -8,6 +8,9 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - '.gitignore'
+      - 'kalyna/native/**'
+      - '.github/workflows/build-steam-deck-native.yml'
+      - '.github/workflows/build.yml'
   pull_request:
     branches: [ main ]
     types: [ opened, synchronize, reopened, ready_for_review ]
@@ -15,6 +18,9 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - '.gitignore'
+      - 'kalyna/native/**'
+      - '.github/workflows/build-steam-deck-native.yml'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 permissions:
