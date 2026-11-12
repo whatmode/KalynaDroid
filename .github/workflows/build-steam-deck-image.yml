@@ -1,5 +1,4 @@
-name: Build Kalyna Steam Deck bootable image
-
+name: Build KalynaOS CachyOS Handheld microSD image
 on:
   push:
     branches: [main]
@@ -15,94 +14,64 @@ on:
       - "kalyna/native/VERSION"
       - ".github/workflows/build-steam-deck-image.yml"
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: steam-deck-image-${{ github.ref }}
+  group: kalynaos-handheld-image-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   package:
-    name: Build native Kalyna package
     runs-on: ubuntu-24.04
     container:
       image: archlinux:latest
-    timeout-minutes: 45
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-
-      - name: Install build dependencies
+      - uses: actions/checkout@v4
+      - name: Build native Kalyna package
         run: |
-          pacman -Syu --noconfirm --needed
-          pacman -S --noconfirm --needed base-devel cmake ninja pkgconf \
-            qt6-base qt6-declarative qt6-wayland qt6-shadertools \
-            qt6-svg qt6-virtualkeyboard sdl2 python
-
-      - name: Build package
-        run: |
-          set -euo pipefail
-          useradd --create-home builder
-          printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
-          chmod 0440 /etc/sudoers.d/builder
+          pacman -Syu --noconfirm --needed base-devel cmake ninja pkgconf qt6-base qt6-declarative qt6-wayland qt6-shadertools qt6-svg qt6-virtualkeyboard sdl2 python
+          useradd -m builder
+          printf 'builder ALL=(ALL) NOPASSWD: ALL\\n' > /etc/sudoers.d/builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
           su builder -c "cd '$GITHUB_WORKSPACE/kalyna/native/packaging' && makepkg --syncdeps --noconfirm --cleanbuild"
           mkdir -p dist
           cp kalyna/native/packaging/kalyna-native-[0-9]*-x86_64.pkg.tar.zst dist/
-
       - uses: actions/upload-artifact@v4
         with:
-          name: kalyna-native-package-for-image
+          name: kalyna-native-for-handheld-image
           path: dist/*.pkg.tar.zst
-          if-no-files-found: error
           retention-days: 2
-
   image:
-    name: Build UEFI live ISO
     needs: package
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-
-      - name: Download native package
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: kalyna-native-package-for-image
+          name: kalyna-native-for-handheld-image
           path: dist/package
-
-      - name: Build image in privileged Arch container
+      - name: Build pinned CachyOS Handheld bootc disk image
+        env:
+          UPSTREAM_SHA: b37f8727250f4d6e78212ef65d006d905d2039a9
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y podman xz-utils
+          git clone https://github.com/Lumaeris/cachyos-deckify-bootc.git .cache/cachyos-deckify-bootc
+          git -C .cache/cachyos-deckify-bootc checkout "$UPSTREAM_SHA"
+          pkg=$(find dist/package -name '*.pkg.tar.zst' -print -quit)
+          test -n "$pkg"
+          sudo env KALYNAOS_UPSTREAM_DIR="$GITHUB_WORKSPACE/.cache/cachyos-deckify-bootc" bash tools/steam-deck-image/build.sh "$pkg" "$GITHUB_WORKSPACE/dist/image"
+      - name: Verify compressed raw image
         run: |
           set -euo pipefail
-          package=$(find "$GITHUB_WORKSPACE/dist/package" -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
-          test -n "$package"
-          mkdir -p "$GITHUB_WORKSPACE/dist/image"
-          docker run --privileged --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace \
-            archlinux:latest bash -lc '
-              set -euo pipefail
-              pacman -Syu --noconfirm --needed archiso pacman-contrib
-              bash tools/steam-deck-image/build.sh "/workspace/dist/package/$(basename "$1")" /workspace/dist/image
-            ' bash "$package"
-
-      - name: Verify ISO and checksum
-        run: |
-          set -euo pipefail
-          test -s dist/image/kalyna-steam-deck-x86_64.iso
-          (cd dist/image && sha256sum --check SHA256SUMS)
-          file dist/image/kalyna-steam-deck-x86_64.iso
-          du -h dist/image/kalyna-steam-deck-x86_64.iso
-
-      - name: Upload bootable image
-        uses: actions/upload-artifact@v4
+          test -s dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+          (cd dist/image && sha256sum --check KalynaOS-CachyOS-Handheld-SteamDeck.img.xz.sha256)
+          xz -t dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+      - uses: actions/upload-artifact@v4
         with:
-          name: kalyna-steam-deck-uefi-x86_64
+          name: kalynaos-cachyos-handheld-steamdeck-microsd
           path: |
-            dist/image/kalyna-steam-deck-x86_64.iso
-            dist/image/SHA256SUMS
-          if-no-files-found: error
+            dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+            dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz.sha256
           retention-days: 30
