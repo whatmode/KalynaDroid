@@ -28,7 +28,7 @@ kalyna-shell (C++ / QML)                    kalyna-system (Python)
 ### Build and install locally
 From the repository root:
 ```sh
-cd kalyna/native
+cd kalyna/native/packaging
 makepkg -si
 ```
 This builds the native shell and installs it with pacman, resolving its declared dependencies.
@@ -37,7 +37,7 @@ This builds the native shell and installs it with pacman, resolving its declared
 Open the latest successful **Build Kalyna native Arch package** run in the repository's Actions tab,
 download the `kalyna-native-arch-x86_64` artifact, extract it, then run:
 ```sh
-sudo pacman -U ./kalyna-native-2.0.0-1-x86_64.pkg.tar.zst
+sudo pacman -U ./kalyna-native-2.0.0-4-x86_64.pkg.tar.zst
 ```
 Use the exact package filename from the downloaded artifact if its version or release number differs.
 To verify installation:
