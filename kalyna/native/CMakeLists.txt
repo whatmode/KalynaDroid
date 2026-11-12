@@ -38,7 +38,7 @@ qt_add_shaders(kalyna-shell "kalyna_shaders"
 )
 
 target_link_libraries(kalyna-shell PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::WaylandCompositor Qt6::Gamepad)
+    Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::WaylandCompositor PkgConfig::SDL2)
 
 include(GNUInstallDirs)
 install(TARGETS kalyna-shell RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
