@@ -112,7 +112,7 @@ Item {
         originY: y + Theme.topH
         radius: Theme.px(26)
         opacity: ov.home.drawerMode ? 1 - ov.home.drawerPos : 1
-        visible: opacity > 0 && (ov.portrait || ov.home.sheetRect.x > width || Prefs.leftHanded)
+        visible: opacity > 0
 
         Row {
             id: dockRow
