@@ -19,14 +19,35 @@ kalyna-shell (C++ / QML)                    kalyna-system (Python)
   quick settings, settings, recents, lock screen, controls
 * `shaders/glass.frag` — liquid glass: lens refraction at the rim, blur, colour split, rim light
 * `system/kalyna-system.py` — the system service (demo data when a tool is missing, or `--demo`)
-* `assets/` — fonts (Inter, JetBrains Mono), icons, logo, wallpapers, sounds, made from the web
-  edition by `tools/make-assets.py` so both editions look and sound the same
+* `assets/` — fonts (Inter, JetBrains Mono), icons, logo, wallpapers, sounds
 * `tests/` — `TestDriver.qml` walks through the shell taking screenshots; `testapp/` is a tiny
   Wayland app used to test windows and the keyboard
 
-## Build
-Needs Qt 6.5+ with: Quick, WaylandCompositor, ShaderTools, Svg, VirtualKeyboard.
+## Install on Arch Linux / CachyOS / Steam Deck (CachyOS)
+
+### Build and install locally
+From the repository root:
+```sh
+cd kalyna/native/packaging
+makepkg -si
 ```
+This builds the native shell and installs it with pacman, resolving its declared dependencies.
+
+### Install a package built by GitHub Actions
+Open the latest successful **Build Kalyna native Arch package** run in the repository's Actions tab,
+download the `kalyna-native-arch-x86_64` artifact, extract it, then run:
+```sh
+sudo pacman -U ./kalyna-native-2.0.0-4-x86_64.pkg.tar.zst
+```
+Use the exact package filename from the downloaded artifact if its version or release number differs.
+To verify installation:
+```sh
+pacman -Q kalyna-native
+```
+
+## Build manually
+Needs Qt 6.5+ with: Quick, WaylandCompositor, ShaderTools, Svg, VirtualKeyboard.
+```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
