@@ -1,7 +1,7 @@
 # Maintainer: KalynaOS contributors
 pkgname=kalyna-native
 pkgver=2.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Native Qt 6 Wayland shell for KalynaOS"
 arch=('x86_64')
 url="https://github.com/whatmode/KalynaDroid"
@@ -28,7 +28,9 @@ source=()
 sha256sums=()
 
 build() {
-  cmake -S "$startdir" -B "$srcdir/build" -G Ninja \
+  local pkgbuild_dir
+  pkgbuild_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  cmake -S "$pkgbuild_dir" -B "$srcdir/build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr
   cmake --build "$srcdir/build" --parallel
