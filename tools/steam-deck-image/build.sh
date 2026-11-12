@@ -46,8 +46,6 @@ path.write_text(text)
 PY
 
 cat >> "$work/Containerfile" <<'CONTAINER'
-# bootc disk installation requires bootupd for OSTree-based deployments.
-RUN --mount=type=tmpfs,dst=/run pacman -Sy --needed --noconfirm bootupd && pacman -S --clean --noconfirm
 COPY kalyna-native.pkg.tar.zst /tmp/kalyna-native.pkg.tar.zst
 RUN --mount=type=tmpfs,dst=/run pacman -U --noconfirm /tmp/kalyna-native.pkg.tar.zst && rm -f /tmp/kalyna-native.pkg.tar.zst
 COPY kalyna-shell.service /etc/systemd/system/kalyna-shell.service
@@ -80,7 +78,7 @@ UNIT
 podman build --pull=always -t localhost/kalynaos-handheld:ci "$work"
 image="$out/KalynaOS-CachyOS-Handheld-SteamDeck.img"
 rm -f "$image"; fallocate -l "${KALYNAOS_IMAGE_SIZE:-24G}" "$image"
-podman run --rm --privileged --pid=host -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci bootc install to-disk --via-loopback "/out/$(basename "$image")" --filesystem btrfs --wipe --bootloader systemd
+podman run --rm --privileged --pid=host -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci bootc install to-disk --via-loopback "/out/$(basename "$image")" --filesystem btrfs --wipe --composefs-backend --bootloader systemd
 xz -T0 -z -f "$image"
 sha256sum "$image.xz" > "$image.xz.sha256"
 ls -lh "$image.xz" "$image.xz.sha256"
