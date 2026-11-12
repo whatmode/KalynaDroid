@@ -46,6 +46,8 @@ path.write_text(text)
 PY
 
 cat >> "$work/Containerfile" <<'CONTAINER'
+# bootc disk installation requires bootupd for OSTree-based deployments.
+RUN --mount=type=tmpfs,dst=/run pacman -Sy --needed --noconfirm bootupd && pacman -S --clean --noconfirm
 COPY kalyna-native.pkg.tar.zst /tmp/kalyna-native.pkg.tar.zst
 RUN --mount=type=tmpfs,dst=/run pacman -U --noconfirm /tmp/kalyna-native.pkg.tar.zst && rm -f /tmp/kalyna-native.pkg.tar.zst
 COPY kalyna-shell.service /etc/systemd/system/kalyna-shell.service
