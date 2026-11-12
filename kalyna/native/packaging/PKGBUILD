@@ -13,7 +13,7 @@ depends=(
   'qt6-shadertools'
   'qt6-svg'
   'qt6-virtualkeyboard'
-  'qt6-gamepad'
+  'sdl2'
   'python'
 )
 optdepends=(
