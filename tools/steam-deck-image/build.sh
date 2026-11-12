@@ -88,6 +88,8 @@ TTYVTDisallocate=yes
 WantedBy=multi-user.target
 UNIT
 ln -s ../kalyna-shell.service "$profile/airootfs/etc/systemd/system/multi-user.target.wants/kalyna-shell.service"
+# The stock live ISO starts a getty on tty1; mask it so it cannot compete with EGLFS.
+ln -s /dev/null "$profile/airootfs/etc/systemd/system/getty@tty1.service"
 ln -s /usr/lib/systemd/system/NetworkManager.service "$profile/airootfs/etc/systemd/system/multi-user.target.wants/NetworkManager.service"
 
 # Give the generated ISO a distinct name without changing the upstream profile.
