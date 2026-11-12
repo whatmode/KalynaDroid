@@ -9,8 +9,7 @@
 #include <QQuickItem>
 #include <QTimer>
 #include <array>
-
-struct SDL_GameController;
+#include <SDL.h>
 
 class Shell : public QObject {
     Q_OBJECT
