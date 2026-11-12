@@ -8,6 +8,10 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - '.gitignore'
+      - 'tools/steam-deck-image/**'
+      - 'kalyna/native/packaging/PKGBUILD'
+      - 'kalyna/native/VERSION'
+      - '.github/workflows/build-steam-deck-image.yml'
   pull_request:
     branches: [ main ]
     types: [ opened, synchronize, reopened, ready_for_review ]
@@ -15,6 +19,10 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - '.gitignore'
+      - 'tools/steam-deck-image/**'
+      - 'kalyna/native/packaging/PKGBUILD'
+      - 'kalyna/native/VERSION'
+      - '.github/workflows/build-steam-deck-image.yml'
   workflow_dispatch:
 
 permissions:
