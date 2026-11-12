@@ -1,0 +1,71 @@
+name: Build Kalyna native (Steam Deck x86_64)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "kalyna/native/**"
+      - ".github/workflows/build-steam-deck-native.yml"
+  pull_request:
+    paths:
+      - "kalyna/native/**"
+      - ".github/workflows/build-steam-deck-native.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steam-deck-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build x86_64 native shell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config zstd \
+            qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-shadertools-dev
+
+      - name: Configure
+        working-directory: kalyna/native
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+
+      - name: Compile
+        working-directory: kalyna/native
+        run: cmake --build build --parallel 2
+
+      - name: Install into package staging directory
+        working-directory: kalyna/native
+        run: |
+          DESTDIR="$RUNNER_TEMP/stage" cmake --install build
+          test -x "$RUNNER_TEMP/stage/usr/bin/kalyna-shell"
+          test -f "$RUNNER_TEMP/stage/usr/lib/kalyna/kalyna-system.py"
+          test -d "$RUNNER_TEMP/stage/usr/share/kalyna/assets"
+
+      - name: Create build metadata and archive
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          version="$(tr -d '\n' < kalyna/native/VERSION)"
+          commit="$(git rev-parse HEAD)"
+          printf 'Kalyna native x86_64\nVersion: %s\nCommit: %s\nArchitecture: x86_64\n' "$version" "$commit" > "$RUNNER_TEMP/stage/BUILD-INFO.txt"
+          tar --zstd -C "$RUNNER_TEMP/stage" -cf "dist/kalyna-native-x86_64.tar.zst" .
+          sha256sum dist/kalyna-native-x86_64.tar.zst > dist/kalyna-native-x86_64.tar.zst.sha256
+          cp "$RUNNER_TEMP/stage/BUILD-INFO.txt" dist/
+
+      - name: Upload downloadable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: kalyna-native-steam-deck-x86_64
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
