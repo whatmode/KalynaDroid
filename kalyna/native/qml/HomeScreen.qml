@@ -9,6 +9,24 @@ Item {
     property string query: ""
     readonly property bool portrait: height > width
     readonly property bool lefty: Prefs.leftHanded
+    property int selectedIndex: 0
+
+    function moveSelection(dx, dy) {
+        if (!results.length) return
+        const columns = Math.max(3, Math.floor(col.width / Theme.px(104)))
+        const next = Math.max(0, Math.min(results.length - 1, selectedIndex + dx + dy * columns))
+        selectedIndex = next
+        const row = Math.floor(next / columns)
+        const y = row * Theme.px(112)
+        if (y < flick.contentY) flick.contentY = y
+        else if (y + Theme.px(112) > flick.contentY + flick.height)
+            flick.contentY = y + Theme.px(112) - flick.height
+    }
+    function activateSelected() {
+        if (results.length && shellRef) shellRef.launch(results[Math.max(0, Math.min(selectedIndex, results.length - 1))])
+    }
+    onQueryChanged: selectedIndex = 0
+    onResultsChanged: selectedIndex = Math.max(0, Math.min(selectedIndex, results.length - 1))
 
     // ---------------------------------------------------------------- phone: home screen + app drawer
     // On a phone (Kalyna on Android) home shows the clock and the dock; all apps live in a drawer
@@ -184,6 +202,7 @@ Item {
                                 delegate: AppTile {
                                     required property var modelData
                                     app: modelData
+                                    selected: home.results.indexOf(modelData) === home.selectedIndex
                                     width: Math.floor(col.width / Math.max(3, Math.floor(col.width / Theme.px(104))))
                                     onActivated: home.shellRef.launch(modelData)
                                 }
