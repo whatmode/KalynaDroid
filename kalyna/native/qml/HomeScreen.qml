@@ -25,7 +25,6 @@ Item {
     function activateSelected() {
         if (results.length && shellRef) shellRef.launch(results[Math.max(0, Math.min(selectedIndex, results.length - 1))])
     }
-    onQueryChanged: selectedIndex = 0
     onResultsChanged: selectedIndex = Math.max(0, Math.min(selectedIndex, results.length - 1))
 
     // ---------------------------------------------------------------- phone: home screen + app drawer
@@ -232,7 +231,7 @@ Item {
     }
     function scrollToEnd() { if (drawerMode) scrollToStart(); else flick.contentY = Math.max(0, flick.contentHeight - flick.height) }
     function scrollToStart() { flick.contentY = 0 }
-    onQueryChanged: Qt.callLater(scrollToEnd)
+    onQueryChanged: { selectedIndex = 0; Qt.callLater(scrollToEnd) }
     Component.onCompleted: Qt.callLater(scrollToEnd)
     property alias flick: flick
 }
