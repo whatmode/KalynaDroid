@@ -9,6 +9,8 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Network Qml Quick WaylandCompositor ShaderTools)
 qt_standard_project_setup(REQUIRES 6.5)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
 
 qt_add_executable(kalyna-shell
     src/main.cpp
