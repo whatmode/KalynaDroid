@@ -18,7 +18,7 @@ Shell::Shell(QObject *parent) : QObject(parent)
     qApp->installEventFilter(this);
 
     // SDL maps the Deck's built-in controller to a stable game-controller layout.
-    if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) == 0) {
+    if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) == 0) {
         SDL_GameControllerEventState(SDL_ENABLE);
         m_controllerTimer.setInterval(16);
         connect(&m_controllerTimer, &QTimer::timeout, this, &Shell::pollController);
