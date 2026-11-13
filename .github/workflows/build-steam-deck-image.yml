@@ -56,7 +56,7 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y podman xz-utils
+          sudo apt-get install -y podman xz-utils bmap-tools
           git clone https://github.com/Lumaeris/cachyos-deckify-bootc.git .cache/cachyos-deckify-bootc
           git -C .cache/cachyos-deckify-bootc checkout "$UPSTREAM_SHA"
           pkg=$(find dist/package -name '*.pkg.tar.zst' -print -quit)
@@ -65,13 +65,17 @@ jobs:
       - name: Verify compressed raw image
         run: |
           set -euo pipefail
-          test -s dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+          image=dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+          test -s "$image"
+          test -s dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.bmap
           (cd dist/image && sha256sum --check KalynaOS-CachyOS-Handheld-SteamDeck.img.xz.sha256)
-          xz -t dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
+          xz -t "$image"
+          grep -q '<bmap' dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.bmap
       - uses: actions/upload-artifact@v4
         with:
           name: kalynaos-cachyos-handheld-steamdeck-microsd
           path: |
             dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz
             dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.xz.sha256
+            dist/image/KalynaOS-CachyOS-Handheld-SteamDeck.img.bmap
           retention-days: 30
