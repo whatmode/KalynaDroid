@@ -52,7 +52,7 @@ COPY kalyna-shell.service /etc/systemd/system/kalyna-shell.service
 RUN systemctl enable kalyna-shell.service
 # Remove downloaded package archives and build logs from the installed OS.
 # Keep the pacman database and all installed packages intact.
-RUN --mount=type=tmpfs,dst=/run pacman -Scc --noconfirm && \\\n    rm -f /usr/lib/sysimage/log/pacman.log /var/log/pacman.log && \\\n    rm -rf /usr/lib/sysimage/cache/pacman/pkg/* /var/cache/pacman/pkg/*
+RUN rm -f /usr/lib/sysimage/log/pacman.log /var/log/pacman.log && rm -rf /usr/lib/sysimage/cache/pacman/pkg/* /var/cache/pacman/pkg/*
 CONTAINER
 cat > "$work/kalyna-shell.service" <<'UNIT'
 [Unit]
