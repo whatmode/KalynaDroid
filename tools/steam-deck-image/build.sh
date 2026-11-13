@@ -81,12 +81,23 @@ UNIT
 podman build --pull=always -t localhost/kalynaos-handheld:ci "$work"
 image="$out/KalynaOS-CachyOS-Handheld-SteamDeck.img"
 rm -f "$image"; truncate -s "${KALYNAOS_IMAGE_SIZE:-24G}" "$image"
-podman run --rm --privileged --pid=host -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci bootc install to-disk --via-loopback "/out/$(basename "$image")" --filesystem btrfs --wipe --composefs-backend --bootloader systemd
+echo "==> Installing bootc image into raw disk image"
+time podman run --rm --privileged --pid=host -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci bootc install to-disk --via-loopback "/out/$(basename "$image")" --filesystem btrfs --wipe --composefs-backend --bootloader systemd
+echo "==> bootc installation command returned successfully"
+
 # Generate a block map before compression. bmaptool decompresses .xz while flashing.
 # truncate leaves unused sectors as holes; fallocate would allocate all 24 GiB.
-bmaptool create -o "$image.bmap" "$image"
-xz -T0 -6 -z -f "$image"
+echo "==> Creating BMAP (scanning raw disk image)"
+time bmaptool create -o "$image.bmap" "$image"
+echo "==> BMAP creation finished"
+
+echo "==> Compressing raw disk image with xz -T0 -6 (this can take several minutes)"
+time xz --verbose -T0 -6 -z -f "$image"
+echo "==> Compression finished"
+
+echo "==> Calculating SHA-256 checksum"
 sha256sum "$image.xz" > "$image.xz.sha256"
+echo "==> Final artifact sizes"
 ls -lh "$image.xz" "$image.bmap" "$image.xz.sha256"
 du -h "$image.xz" "$image.bmap"
 
