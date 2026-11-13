@@ -77,10 +77,14 @@ WantedBy=multi-user.target
 UNIT
 podman build --pull=always -t localhost/kalynaos-handheld:ci "$work"
 image="$out/KalynaOS-CachyOS-Handheld-SteamDeck.img"
-rm -f "$image"; fallocate -l "${KALYNAOS_IMAGE_SIZE:-24G}" "$image"
+rm -f "$image"; truncate -s "${KALYNAOS_IMAGE_SIZE:-24G}" "$image"
 podman run --rm --privileged --pid=host -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci bootc install to-disk --via-loopback "/out/$(basename "$image")" --filesystem btrfs --wipe --composefs-backend --bootloader systemd
-xz -T0 -z -f "$image"
+# Generate a block map before compression. bmaptool decompresses .xz while flashing.
+# truncate leaves unused sectors as holes; fallocate would allocate all 24 GiB.
+bmaptool create -o "$image.bmap" "$image"
+xz -T0 -6 -z -f "$image"
 sha256sum "$image.xz" > "$image.xz.sha256"
-ls -lh "$image.xz" "$image.xz.sha256"
+ls -lh "$image.xz" "$image.bmap" "$image.xz.sha256"
+du -h "$image.xz" "$image.bmap"
 
 # Keep this path-filtered image workflow retriggerable after CI-only fixes.
