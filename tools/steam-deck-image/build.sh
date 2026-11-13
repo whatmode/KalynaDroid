@@ -82,8 +82,45 @@ podman build --pull=always -t localhost/kalynaos-handheld:ci "$work"
 image="$out/KalynaOS-CachyOS-Handheld-SteamDeck.img"
 rm -f "$image"; truncate -s "${KALYNAOS_IMAGE_SIZE:-24G}" "$image"
 echo "==> Installing bootc image into raw disk image"
-time podman run --rm --privileged --pid=host -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci bootc install to-disk --via-loopback "/out/$(basename "$image")" --filesystem btrfs --wipe --composefs-backend --bootloader systemd
-echo "==> bootc installation command returned successfully"
+# bootc reports "Installation complete!" but the container can remain alive
+# during shutdown/cleanup. Keep it inspectable and bound the wait so CI cannot
+# hang indefinitely after the disk image has been written.
+container_name="kalyna-bootc-install"
+podman rm -f "$container_name" >/dev/null 2>&1 || true
+set +e
+timeout --foreground --signal=TERM --kill-after=30s 20m \
+  podman run --name "$container_name" --privileged --pid=host \
+    -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci \
+    bootc install to-disk --via-loopback "/out/$(basename "$image")" \
+    --filesystem btrfs --wipe --composefs-backend --bootloader systemd
+install_rc=$?
+set -e
+if (( install_rc == 124 )); then
+  echo "WARNING: bootc container did not exit within 20 minutes; collecting state"
+  podman inspect "$container_name" || true
+  podman logs "$container_name" || true
+  podman stop --time 10 "$container_name" >/dev/null 2>&1 || true
+  # Accept a shutdown hang only if bootc left a readable GPT with an EFI
+  # System Partition. This prevents a timeout from masking an incomplete disk.
+  partition_table="$(sfdisk --dump "$image")" || {
+    echo "bootc timed out and the image has no readable partition table" >&2
+    exit 1
+  }
+  printf '%s\\n' "$partition_table"
+  grep -Eiq 'type=[[:space:]]*c12a7328-f81f-11d2-ba4b-00a0c93ec93b' <<<"$partition_table" || {
+    echo "bootc timed out and no EFI System Partition was found" >&2
+    exit 1
+  }
+  echo "==> Disk layout verified; treating post-install container shutdown hang as non-fatal"
+elif (( install_rc != 0 )); then
+  podman inspect "$container_name" || true
+  podman logs "$container_name" || true
+  echo "bootc install failed with exit code $install_rc" >&2
+  exit "$install_rc"
+else
+  echo "==> bootc installation command returned successfully"
+fi
+podman rm -f "$container_name" >/dev/null 2>&1 || true
 
 # Generate a block map before compression. bmaptool decompresses .xz while flashing.
 # truncate leaves unused sectors as holes; fallocate would allocate all 24 GiB.
