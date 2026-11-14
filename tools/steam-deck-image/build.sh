@@ -92,7 +92,7 @@ timeout --foreground --signal=TERM --kill-after=30s 20m \
   podman run --name "$container_name" --privileged --pid=host \
     -v /dev:/dev -v "$out:/out" localhost/kalynaos-handheld:ci \
     bootc install to-disk --via-loopback "/out/$(basename "$image")" \
-    --filesystem btrfs --wipe --composefs-backend --bootloader systemd
+    --filesystem ext4 --wipe --composefs-backend --bootloader systemd
 install_rc=$?
 set -e
 if (( install_rc == 124 )); then
