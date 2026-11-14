@@ -123,8 +123,6 @@ fi
 podman rm -f "$container_name" >/dev/null 2>&1 || true
 
 # Validate the actual disk image before it can be compressed or published.
-# A readable GPT alone is not enough: verify partition types, filesystem
-# signatures, filesystem consistency, and the EFI bootloader payload.
 echo "==> Verifying GPT partition layout"
 partition_table="$(sfdisk --dump "$image")"
 printf '%s\\n' "$partition_table"
