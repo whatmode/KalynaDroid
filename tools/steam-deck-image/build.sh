@@ -147,7 +147,8 @@ du -h "$image.xz" "$image.bmap"
 # Keep this path-filtered image workflow retriggerable after CI-only fixes.
  <<<"$partition_table" || { echo "Expected GPT partition table" >&2; exit 1; }
 grep -Eiq 'type=[[:space:]]*c12a7328-f81f-11d2-ba4b-00a0c93ec93b' <<<"$partition_table" || { echo "EFI System Partition missing" >&2; exit 1; }
-grep -Eiq 'type=[[:space:]]*0fc63daf-8483-4772-8e79-3d69d8477de4' <<<"$partition_table" || { echo "Linux root partition missing" >&2; exit 1; }
+# x86_64 uses the Discoverable Partitions Specification Linux root GUID.
+grep -Eiq 'type=[[:space:]]*4f68bce3-e8cd-4db1-96e7-fbcaf984b709' <<<"$partition_table" || { echo "x86_64 Linux root partition (DPS) missing" >&2; exit 1; }
 
 loopdev=""
 mountpoint=""
