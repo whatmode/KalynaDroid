@@ -126,24 +126,7 @@ podman rm -f "$container_name" >/dev/null 2>&1 || true
 echo "==> Verifying GPT partition layout"
 partition_table="$(sfdisk --dump "$image")"
 printf '%s\\n' "$partition_table"
-grep -q '^label: gpt bmaptool decompresses .xz while flashing.
-# truncate leaves unused sectors as holes; fallocate would allocate all 24 GiB.
-echo "==> Creating BMAP (scanning raw disk image)"
-time bmaptool create -o "$image.bmap" "$image"
-echo "==> BMAP creation finished"
-
-echo "==> Compressing raw disk image with xz -T0 -6 (this can take several minutes)"
-time xz --verbose -T0 -6 -z -f "$image"
-echo "==> Compression finished"
-
-echo "==> Calculating SHA-256 checksum"
-sha256sum "$image.xz" > "$image.xz.sha256"
-echo "==> Final artifact sizes"
-ls -lh "$image.xz" "$image.bmap" "$image.xz.sha256"
-du -h "$image.xz" "$image.bmap"
-
-# Keep this path-filtered image workflow retriggerable after CI-only fixes.
- <<<"$partition_table" || { echo "Expected GPT partition table" >&2; exit 1; }
+grep -q '^label: gpt$' <<<"$partition_table" || { echo "Expected GPT partition table" >&2; exit 1; }
 grep -Eiq 'type=[[:space:]]*c12a7328-f81f-11d2-ba4b-00a0c93ec93b' <<<"$partition_table" || { echo "EFI System Partition missing" >&2; exit 1; }
 # x86_64 uses the Discoverable Partitions Specification Linux root GUID.
 grep -Eiq 'type=[[:space:]]*4f68bce3-e8cd-4db1-96e7-fbcaf984b709' <<<"$partition_table" || { echo "x86_64 Linux root partition (DPS) missing" >&2; exit 1; }
