@@ -37,7 +37,7 @@ jobs:
           FEX_API: https://api.fex.net/api/v1
         run: |
           python3 - <<'PY'
-          import json, os, pathlib, sys, urllib.request, urllib.error
+          import json, os, pathlib, sys, urllib.request, urllib.error, urllib.parse
           root = pathlib.Path("artifact")
           images = list(root.rglob("*.img.xz"))
           if len(images) != 1:
