@@ -106,7 +106,7 @@ if (( install_rc == 124 )); then
     echo "bootc timed out and the image has no readable partition table" >&2
     exit 1
   }
-  printf '%s\\n' "$partition_table"
+  printf '%s\n' "$partition_table"
   grep -Eiq 'type=[[:space:]]*c12a7328-f81f-11d2-ba4b-00a0c93ec93b' <<<"$partition_table" || {
     echo "bootc timed out and no EFI System Partition was found" >&2
     exit 1
@@ -125,7 +125,7 @@ podman rm -f "$container_name" >/dev/null 2>&1 || true
 # Validate the actual disk image before it can be compressed or published.
 echo "==> Verifying GPT partition layout"
 partition_table="$(sfdisk --dump "$image")"
-printf '%s\\n' "$partition_table"
+printf '%s\n' "$partition_table"
 grep -q '^label: gpt$' <<<"$partition_table" || { echo "Expected GPT partition table" >&2; exit 1; }
 grep -Eiq 'type=[[:space:]]*c12a7328-f81f-11d2-ba4b-00a0c93ec93b' <<<"$partition_table" || { echo "EFI System Partition missing" >&2; exit 1; }
 # x86_64 uses the Discoverable Partitions Specification Linux root GUID.
