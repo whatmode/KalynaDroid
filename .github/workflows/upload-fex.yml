@@ -1,0 +1,103 @@
+name: Upload KalynaOS image to FEX.net
+
+on:
+  push:
+    branches:
+      - feature/steam-deck-bootable-image
+    paths:
+      - .github/workflows/upload-fex.yml
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful image-build workflow run ID
+        required: true
+        type: string
+        default: "43490093607"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Download verified image build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kalynaos-cachyos-handheld-steamdeck-microsd
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.run_id || '43490093607' }}
+          github-token: ${{ github.token }}
+          path: artifact
+
+      - name: Upload image to FEX.net (anonymous, chunked)
+        env:
+          FEX_API: https://api.fex.net/api/v1
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, sys, urllib.request, urllib.error
+          root = pathlib.Path("artifact")
+          images = list(root.rglob("*.img.xz"))
+          if len(images) != 1:
+              raise SystemExit(f"Expected exactly one .img.xz image, found: {images}")
+          path = images[0]
+          size = path.stat().st_size
+          print(f"Uploading {path.name}: {size:,} bytes", flush=True)
+
+          api = os.environ["FEX_API"]
+          def request(url, method="GET", data=None, headers=None):
+              req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=300) as response:
+                      return response.status, response.read()
+              except urllib.error.HTTPError as e:
+                  detail = e.read().decode("utf-8", "replace")
+                  raise RuntimeError(f"FEX HTTP {e.code}: {detail}") from e
+
+          _, raw = request(api + "/anonymous/upload-token")
+          token = json.loads(raw)["token"]
+          auth = {"authorization": "Bearer " + token}
+          metadata = json.dumps({"directory_id": None, "size": size, "name": path.name}).encode()
+          headers = {**auth, "content-type": "application/json"}
+          status, raw = request(api + "/anonymous/file", "POST", metadata, headers)
+          init = json.loads(raw)
+          upload_url = init.get("location")
+          file_key = init.get("anon_upload_link")
+          if not upload_url or not file_key:
+              raise RuntimeError("FEX did not return an upload location and public file key")
+
+          create_headers = {
+              **auth,
+              "fsp-filename": urllib.parse.quote(path.name),
+              "fsp-size": str(size),
+              "fsp-version": "1.0.0",
+          }
+          status, body = request(upload_url, "POST", b"", create_headers)
+          if status not in (200, 201, 204):
+              raise RuntimeError(f"FEX resource creation returned HTTP {status}")
+
+          chunk_size = 4 * 1024 * 1024
+          offset = 0
+          with path.open("rb") as source:
+              while True:
+                  chunk = source.read(chunk_size)
+                  if not chunk:
+                      break
+                  chunk_headers = {
+                      **auth,
+                      "content-type": "application/offset+octet-stream",
+                      "fsp-offset": str(offset),
+                      "fsp-version": "1.0.0",
+                  }
+                  status, body = request(upload_url, "PATCH", chunk, chunk_headers)
+                  offset += len(chunk)
+                  print(f"Uploaded {offset:,}/{size:,} bytes ({offset * 100 / size:.1f}%)", flush=True)
+                  if offset < size and status != 204:
+                      raise RuntimeError(f"FEX chunk upload returned HTTP {status}")
+                  if offset == size and status not in (200, 204):
+                      raise RuntimeError(f"FEX final chunk returned HTTP {status}")
+
+          print("FEX_UPLOAD_URL=https://fex.net/s/" + file_key, flush=True)
+          PY
