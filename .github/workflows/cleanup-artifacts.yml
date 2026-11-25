@@ -1,25 +1,15 @@
-name: Cleanup Actions artifacts
+name: Delete ALL Actions artifacts
 
 on:
   workflow_dispatch:
     inputs:
-      older_than_days:
-        description: "Only consider artifacts older than this many days"
-        required: true
-        default: "7"
-        type: string
-      keep_latest:
-        description: "Always preserve this many newest artifacts"
-        required: true
-        default: "3"
-        type: string
       dry_run:
         description: "Preview only; do not delete"
         required: true
         default: true
         type: boolean
       confirm_delete:
-        description: "Must be true as a separate deletion confirmation"
+        description: "Set true to confirm deletion of every artifact in this repository"
         required: true
         default: false
         type: boolean
@@ -28,31 +18,21 @@ permissions:
   actions: write
 
 concurrency:
-  group: cleanup-actions-artifacts
+  group: delete-all-actions-artifacts
   cancel-in-progress: false
 
 jobs:
   cleanup:
-    name: Preview or delete old artifacts
+    name: Preview or delete every artifact
     runs-on: ubuntu-latest
     steps:
-      - name: List and optionally delete artifacts
+      - name: List and optionally delete all artifacts
         uses: actions/github-script@v7
         with:
           script: |
-            const days = Number(core.getInput('older_than_days'));
-            const keepLatest = Number(core.getInput('keep_latest'));
             const dryRun = core.getInput('dry_run') === 'true';
             const confirmed = core.getInput('confirm_delete') === 'true';
 
-            if (!Number.isInteger(days) || days < 1 || days > 3650) {
-              core.setFailed('older_than_days must be an integer from 1 to 3650.');
-              return;
-            }
-            if (!Number.isInteger(keepLatest) || keepLatest < 0 || keepLatest > 1000) {
-              core.setFailed('keep_latest must be an integer from 0 to 1000.');
-              return;
-            }
             if (!dryRun && !confirmed) {
               core.setFailed('Deletion blocked: set confirm_delete=true as well as dry_run=false.');
               return;
@@ -64,27 +44,14 @@ jobs:
               { owner, repo, per_page: 100 }
             );
 
-            artifacts.sort((a, b) =>
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-
-            const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-            const candidates = artifacts.filter((artifact, index) =>
-              index >= keepLatest &&
-              !artifact.expired &&
-              new Date(artifact.created_at).getTime() < cutoff
-            );
-
             core.info(`Repository: ${owner}/${repo}`);
-            core.info(`Artifacts listed: ${artifacts.length}`);
-            core.info(`Policy: older than ${days} days; preserve newest ${keepLatest}`);
-            core.info(`Mode: ${dryRun ? 'DRY RUN — no deletion' : 'DELETE'}`);
-            core.info(`Eligible artifacts: ${candidates.length}`);
+            core.info(`Artifacts found: ${artifacts.length}`);
+            core.info(`Mode: ${dryRun ? 'DRY RUN — no deletion' : 'DELETE ALL'}`);
 
             let bytes = 0;
-            for (const artifact of candidates) {
+            for (const artifact of artifacts) {
               bytes += artifact.size_in_bytes || 0;
-              core.info(`${dryRun ? '[WOULD DELETE]' : '[DELETING]'} id=${artifact.id} name=${artifact.name} size=${artifact.size_in_bytes} created=${artifact.created_at}`);
+              core.info(`${dryRun ? '[WOULD DELETE]' : '[DELETING]'} id=${artifact.id} name=${artifact.name} size=${artifact.size_in_bytes} created=${artifact.created_at} expired=${artifact.expired}`);
               if (!dryRun) {
                 await github.rest.actions.deleteArtifact({
                   owner,
@@ -96,16 +63,16 @@ jobs:
 
             const mib = (bytes / 1024 / 1024).toFixed(2);
             core.summary
-              .addHeading('Actions artifact cleanup')
+              .addHeading('Delete all Actions artifacts')
               .addTable([
                 [{data:'Metric',header:true},{data:'Value',header:true}],
-                ['Artifacts listed', String(artifacts.length)],
-                ['Eligible artifacts', String(candidates.length)],
-                ['Estimated eligible size', `${mib} MiB`],
+                ['Artifacts found', String(artifacts.length)],
+                ['Total listed size', `${mib} MiB`],
                 ['Mode', dryRun ? 'Dry run — nothing deleted' : 'Deletion confirmed']
               ])
-              .addList(candidates.map(a => `${a.name} (ID ${a.id}, ${(a.size_in_bytes / 1024 / 1024).toFixed(2)} MiB, ${a.created_at})`))
+              .addList(artifacts.map(a => `${a.name} (ID ${a.id}, ${(a.size_in_bytes / 1024 / 1024).toFixed(2)} MiB, ${a.created_at})`))
               .write();
+
             core.info(dryRun
-              ? 'Preview complete. Review the list, then rerun with dry_run=false and confirm_delete=true to delete.'
-              : `Deleted ${candidates.length} artifacts.`);
+              ? 'Preview complete. Review the list, then rerun with dry_run=false and confirm_delete=true to delete every listed artifact.'
+              : `Deleted ${artifacts.length} artifacts.`);
